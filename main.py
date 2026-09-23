@@ -237,17 +237,6 @@ def get_current_user(user: Optional[dict] = Depends(get_current_user_optional)) 
 class EmailCheckReq(BaseModel):
     email: str
 
-class RequestOtpReq(BaseModel):
-    email: str
-    purpose: str = "REGISTER" # REGISTER | RESET_PIN
-
-class VerifyOtpReq(BaseModel):
-    email: str
-    code: str
-    purpose: str = "REGISTER"
-    pin: str = Field(min_length=4, max_length=4)
-    display_name: Optional[str] = "Thành viên"
-
 class LoginReq(BaseModel):
     email: str
     pin: str = Field(min_length=4, max_length=4)
@@ -348,108 +337,6 @@ def change_pin(data: ChangePinReq, user: dict = Depends(get_current_user), conn:
         conn.execute("UPDATE users SET pin_hash = ?, updated_at = ? WHERE id = ?", (new_pin_h, now_str, user["id"]))
 
     return {"message": "Đổi mã PIN thành công"}
-
-@app.post("/api/auth/request-otp")
-async def request_otp(data: RequestOtpReq, conn: sqlite3.Connection = Depends(get_db)):
-    email = data.email.strip().lower()
-    purpose = data.purpose.upper()
-    if purpose not in ("REGISTER", "RESET_PIN"):
-        raise HTTPException(status_code=400, detail="Mục đích OTP không hợp lệ")
-
-    user = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
-    if purpose == "REGISTER" and user:
-        raise HTTPException(status_code=400, detail="Email này đã được đăng ký. Vui lòng đăng nhập.")
-    if purpose == "RESET_PIN" and not user:
-        raise HTTPException(status_code=404, detail="Email chưa được đăng ký trong hệ thống.")
-
-    # Generate 6-digit OTP
-    code = f"{secrets.randbelow(900000) + 100000}"
-    code_h = hash_code(code)
-    exp = (datetime.now(timezone.utc) + timedelta(minutes=OTP_EXPIRE_MINUTES)).isoformat()
-    now_str = now_iso()
-
-    with conn:
-        conn.execute("""
-            INSERT INTO otp_codes (email, purpose, code_hash, expires_at, created_at)
-            VALUES (?, ?, ?, ?, ?)
-        """, (email, purpose, code_h, exp, now_str))
-
-    # Dispatch to n8n
-    asyncio.create_task(dispatch_event("send_otp", {
-        "email": email,
-        "code": code,
-        "purpose": purpose,
-        "expires_in_minutes": OTP_EXPIRE_MINUTES
-    }))
-
-    # Return dev_code for instant testing when running locally
-    return {
-        "message": f"Mã OTP đã được tạo và gửi tới {email}",
-        "dev_code": code,
-        "expires_in_minutes": OTP_EXPIRE_MINUTES
-    }
-
-@app.post("/api/auth/register-or-reset")
-async def verify_otp_and_set_pin(data: VerifyOtpReq, response: Response, conn: sqlite3.Connection = Depends(get_db)):
-    email = data.email.strip().lower()
-    purpose = data.purpose.upper()
-    if not (data.pin.isdigit() and len(data.pin) == 4):
-        raise HTTPException(status_code=400, detail="PIN phải gồm đúng 4 chữ số.")
-
-    code_h = hash_code(data.code.strip())
-    cur = conn.execute("""
-        SELECT id FROM otp_codes
-        WHERE email = ? AND purpose = ? AND code_hash = ? AND used_at IS NULL AND expires_at > ?
-        ORDER BY id DESC LIMIT 1
-    """, (email, purpose, code_h, now_iso()))
-    otp_row = cur.fetchone()
-
-    if not otp_row:
-        raise HTTPException(status_code=400, detail="Mã OTP không đúng hoặc đã hết hạn.")
-
-    pin_h = hash_pin(data.pin)
-    now_str = now_iso()
-
-    with conn:
-        conn.execute("UPDATE otp_codes SET used_at = ? WHERE id = ?", (now_str, otp_row["id"]))
-
-        if purpose == "REGISTER":
-            display_name = data.display_name.strip() if data.display_name else email.split("@")[0]
-            cur = conn.execute("""
-                INSERT INTO users (email, pin_hash, display_name, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?)
-            """, (email, pin_h, display_name, now_str, now_str))
-            user_id = cur.lastrowid
-        else: # RESET_PIN
-            user = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
-            if not user:
-                raise HTTPException(status_code=404, detail="User không tồn tại")
-            user_id = user["id"]
-            conn.execute("UPDATE users SET pin_hash = ?, updated_at = ? WHERE id = ?", (pin_h, now_str, user_id))
-
-        # Create session
-        token = secrets.token_hex(32)
-        exp_session = (datetime.now(timezone.utc) + timedelta(days=SESSION_EXPIRE_DAYS)).isoformat()
-        conn.execute("""
-            INSERT INTO sessions (user_id, token, expires_at, created_at)
-            VALUES (?, ?, ?, ?)
-        """, (user_id, token, exp_session, now_str))
-
-    response.set_cookie(
-        key="session_token",
-        value=token,
-        max_age=SESSION_EXPIRE_DAYS * 86400,
-        httponly=True,
-        samesite="lax"
-    )
-
-    user_data = conn.execute("SELECT id, email, display_name, avatar_url, bank_name, bank_account_number, bank_account_name FROM users WHERE id = ?", (user_id,)).fetchone()
-
-    return {
-        "message": "Thành công",
-        "token": token,
-        "user": dict(user_data)
-    }
 
 @app.post("/api/auth/login")
 def login(data: LoginReq, response: Response, conn: sqlite3.Connection = Depends(get_db)):
@@ -1171,7 +1058,11 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 def serve_index():
     index_file = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_file):
-        return FileResponse(index_file)
+        return FileResponse(index_file, headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        })
     return {"message": "Team Fund & Bill Split API running. Frontend static/index.html not created yet."}
 
 if __name__ == "__main__":
