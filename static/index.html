@@ -1102,13 +1102,20 @@
   </div>
 
   <script>
-    const { createApp, ref, computed, onMounted } = Vue;
+    const { createApp, ref, computed, onMounted, watch } = Vue;
 
     createApp({
       setup() {
         const currentUser = ref(null);
         const currentTab = ref('dashboard');
         const debtSubTab = ref('i_owe');
+
+        // Tự động scroll lên đầu trang mỗi khi chuyển tab hoặc subtab
+        watch([currentTab, debtSubTab], () => {
+          window.scrollTo(0, 0);
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+        });
 
         const tabs = [
           { id: 'dashboard', name: 'Tổng quan', shortName: 'Tổng quan', icon: '📊' },
