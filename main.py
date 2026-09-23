@@ -51,7 +51,9 @@ def init_db():
             bank_name TEXT DEFAULT '',
             bank_account_number TEXT DEFAULT '',
             bank_account_name TEXT DEFAULT '',
-            status TEXT DEFAULT 'ACTIVE',
+            role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('user', 'admin')),
+            status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'disabled')),
+            must_change_pin INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -140,6 +142,24 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_fund_tx_deleted ON fund_transactions(deleted_at);
         CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read);
         """)
+
+        # Run migrations on existing databases
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+        if "role" not in cols:
+            conn.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'")
+        if "must_change_pin" not in cols:
+            conn.execute("ALTER TABLE users ADD COLUMN must_change_pin INTEGER NOT NULL DEFAULT 0")
+
+        # Normalize existing status values
+        conn.execute("UPDATE users SET must_change_pin = 1 WHERE status = 'PENDING_PIN_CHANGE'")
+        conn.execute("UPDATE users SET status = 'active' WHERE status IS NULL OR status IN ('ACTIVE', 'PENDING_PIN_CHANGE')")
+
+        # Ensure at least 1 active admin exists
+        admin_c = conn.execute("SELECT COUNT(*) as c FROM users WHERE role = 'admin' AND status = 'active'").fetchone()[0]
+        if admin_c == 0:
+            first_user = conn.execute("SELECT id FROM users ORDER BY id ASC LIMIT 1").fetchone()
+            if first_user:
+                conn.execute("UPDATE users SET role = 'admin' WHERE id = ?", (first_user[0],))
     conn.close()
 
 def now_iso() -> str:
@@ -235,6 +255,19 @@ def get_current_user_optional(request: Request, conn: sqlite3.Connection = Depen
 def get_current_user(user: Optional[dict] = Depends(get_current_user_optional)) -> dict:
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Vui lòng đăng nhập")
+    if user.get("status") == "disabled":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "ACCOUNT_DISABLED", "message": "Tài khoản đã bị vô hiệu hóa."}
+        )
+    return user
+
+def require_admin(user: dict = Depends(get_current_user)) -> dict:
+    if user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bạn không có quyền truy cập khu vực quản trị."
+        )
     return user
 
 # ----------------- Pydantic Models -----------------
@@ -245,6 +278,12 @@ class EmailCheckReq(BaseModel):
 class LoginReq(BaseModel):
     email: str
     pin: str = Field(min_length=4, max_length=4)
+
+class ChangeUserRoleReq(BaseModel):
+    role: str
+
+class ChangeUserStatusReq(BaseModel):
+    status: str
 
 class AvatarUploadReq(BaseModel):
     image_data: str
@@ -308,8 +347,8 @@ async def check_email(data: EmailCheckReq, conn: sqlite3.Connection = Depends(ge
 
     with conn:
         conn.execute("""
-            INSERT INTO users (email, pin_hash, display_name, status, created_at, updated_at)
-            VALUES (?, ?, ?, 'PENDING_PIN_CHANGE', ?, ?)
+            INSERT INTO users (email, pin_hash, display_name, role, status, must_change_pin, created_at, updated_at)
+            VALUES (?, ?, ?, 'user', 'active', 1, ?, ?)
         """, (email, pin_h, default_name, now_str, now_str))
 
     # Gửi Telegram cho Admin (Thanh Hải)
@@ -342,7 +381,7 @@ def change_pin(data: ChangePinReq, user: dict = Depends(get_current_user), conn:
     now_str = now_iso()
 
     with conn:
-        conn.execute("UPDATE users SET pin_hash = ?, status = 'ACTIVE', updated_at = ? WHERE id = ?", (new_pin_h, now_str, user["id"]))
+        conn.execute("UPDATE users SET pin_hash = ?, must_change_pin = 0, updated_at = ? WHERE id = ?", (new_pin_h, now_str, user["id"]))
 
     return {"message": "Đổi mã PIN thành công"}
 
@@ -354,6 +393,12 @@ def login(data: LoginReq, response: Response, conn: sqlite3.Connection = Depends
     user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
     if not user or user["pin_hash"] != pin_h:
         raise HTTPException(status_code=400, detail="Email hoặc mã PIN không chính xác.")
+
+    if user["status"] == "disabled":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "ACCOUNT_DISABLED", "message": "Tài khoản đã bị vô hiệu hóa."}
+        )
 
     token = secrets.token_hex(32)
     now_str = now_iso()
@@ -373,7 +418,8 @@ def login(data: LoginReq, response: Response, conn: sqlite3.Connection = Depends
         samesite="lax"
     )
 
-    must_change_pin = (user["status"] == "PENDING_PIN_CHANGE")
+    user_keys = user.keys() if hasattr(user, "keys") else []
+    must_change_pin = bool(user["must_change_pin"]) if "must_change_pin" in user_keys else False
 
     return {
         "message": "Đăng nhập thành công",
@@ -387,6 +433,7 @@ def login(data: LoginReq, response: Response, conn: sqlite3.Connection = Depends
             "bank_name": user["bank_name"],
             "bank_account_number": user["bank_account_number"],
             "bank_account_name": user["bank_account_name"],
+            "role": user["role"] if "role" in user_keys else "user",
             "status": user["status"]
         }
     }
@@ -410,8 +457,9 @@ def get_me(user: dict = Depends(get_current_user)):
         "bank_name": user["bank_name"],
         "bank_account_number": user["bank_account_number"],
         "bank_account_name": user["bank_account_name"],
-        "status": user["status"],
-        "must_change_pin": (user["status"] == "PENDING_PIN_CHANGE")
+        "role": user.get("role", "user"),
+        "status": user.get("status", "active"),
+        "must_change_pin": bool(user.get("must_change_pin", 0))
     }
 
 # ----------------- User & Profile API -----------------
@@ -420,7 +468,7 @@ def get_me(user: dict = Depends(get_current_user)):
 def list_users(conn: sqlite3.Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
     rows = conn.execute("""
         SELECT id, email, display_name, avatar_url, bank_name, bank_account_number, bank_account_name
-        FROM users WHERE status IN ('ACTIVE', 'PENDING_PIN_CHANGE') ORDER BY display_name ASC
+        FROM users WHERE status = 'active' ORDER BY display_name ASC
     """).fetchall()
     return [dict(r) for r in rows]
 
@@ -490,6 +538,114 @@ def update_profile(data: ProfileUpdateReq, user: dict = Depends(get_current_user
 
     updated_user = conn.execute("SELECT id, email, display_name, avatar_url, bank_name, bank_account_number, bank_account_name FROM users WHERE id = ?", (user["id"],)).fetchone()
     return {"message": "Cập nhật thông tin thành công", "user": dict(updated_user)}
+
+# ----------------- Admin User Management API -----------------
+
+@app.get("/api/admin/users")
+def admin_list_users(
+    q: Optional[str] = None,
+    role: Optional[str] = None,
+    status: Optional[str] = None,
+    admin: dict = Depends(require_admin),
+    conn: sqlite3.Connection = Depends(get_db)
+):
+    query = """
+        SELECT id, email, display_name, avatar_url, role, status, created_at
+        FROM users WHERE 1=1
+    """
+    params = []
+    if q:
+        query += " AND (display_name LIKE ? OR email LIKE ?)"
+        term = f"%{q.strip()}%"
+        params.extend([term, term])
+    if role:
+        query += " AND role = ?"
+        params.append(role.strip().lower())
+    if status:
+        query += " AND status = ?"
+        params.append(status.strip().lower())
+
+    query += " ORDER BY id ASC"
+    rows = conn.execute(query, params).fetchall()
+    return {"items": [dict(r) for r in rows]}
+
+@app.get("/api/admin/users/{user_id}")
+def admin_get_user(
+    user_id: int,
+    admin: dict = Depends(require_admin),
+    conn: sqlite3.Connection = Depends(get_db)
+):
+    row = conn.execute("""
+        SELECT id, email, display_name, avatar_url, role, status, bank_name, bank_account_number, bank_account_name, created_at, updated_at
+        FROM users WHERE id = ?
+    """, (user_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Không tìm thấy người dùng.")
+    return dict(row)
+
+@app.patch("/api/admin/users/{user_id}/role")
+def admin_change_role(
+    user_id: int,
+    data: ChangeUserRoleReq,
+    admin: dict = Depends(require_admin),
+    conn: sqlite3.Connection = Depends(get_db)
+):
+    new_role = data.role.strip().lower()
+    if new_role not in ("admin", "user"):
+        raise HTTPException(status_code=400, detail="Role không hợp lệ. Chỉ chấp nhận 'admin' hoặc 'user'.")
+
+    with conn:
+        target = conn.execute("SELECT id, role, status FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not target:
+            raise HTTPException(status_code=404, detail="Người dùng không tồn tại.")
+
+        # Last Admin Protection
+        if target["role"] == "admin" and new_role != "admin":
+            active_admin_count = conn.execute("""
+                SELECT COUNT(*) as count FROM users WHERE role = 'admin' AND status = 'active'
+            """).fetchone()["count"]
+            if active_admin_count <= 1:
+                return JSONResponse(
+                    status_code=409,
+                    content={"error": "LAST_ADMIN_PROTECTION", "message": "Không thể gỡ quyền của admin cuối cùng."}
+                )
+
+        now_str = now_iso()
+        conn.execute("UPDATE users SET role = ?, updated_at = ? WHERE id = ?", (new_role, now_str, user_id))
+
+    return {"message": "Cập nhật role thành công", "role": new_role}
+
+@app.patch("/api/admin/users/{user_id}/status")
+def admin_change_status(
+    user_id: int,
+    data: ChangeUserStatusReq,
+    admin: dict = Depends(require_admin),
+    conn: sqlite3.Connection = Depends(get_db)
+):
+    new_status = data.status.strip().lower()
+    if new_status not in ("active", "disabled"):
+        raise HTTPException(status_code=400, detail="Trạng thái không hợp lệ. Chỉ chấp nhận 'active' hoặc 'disabled'.")
+
+    with conn:
+        target = conn.execute("SELECT id, role, status FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not target:
+            raise HTTPException(status_code=404, detail="Người dùng không tồn tại.")
+
+        # Last Admin Protection
+        if target["role"] == "admin" and new_status == "disabled":
+            active_admin_count = conn.execute("""
+                SELECT COUNT(*) as count FROM users WHERE role = 'admin' AND status = 'active'
+            """).fetchone()["count"]
+            if active_admin_count <= 1:
+                return JSONResponse(
+                    status_code=409,
+                    content={"error": "LAST_ADMIN_PROTECTION", "message": "Không thể vô hiệu hóa admin cuối cùng."}
+                )
+
+        now_str = now_iso()
+        conn.execute("UPDATE users SET status = ?, updated_at = ? WHERE id = ?", (new_status, now_str, user_id))
+
+    return {"message": "Cập nhật trạng thái thành công", "status": new_status}
 
 # ----------------- Bill Split Calculation Logic -----------------
 

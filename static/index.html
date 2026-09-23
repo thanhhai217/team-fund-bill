@@ -835,6 +835,128 @@
           </div>
         </div>
 
+        <!-- 7. ADMIN USER MANAGEMENT VIEW -->
+        <div v-if="currentTab === 'admin_users'" class="max-w-4xl w-full mx-auto space-y-4">
+          <!-- Header Banner -->
+          <div class="bg-gradient-to-r from-slate-900 to-indigo-950 rounded-3xl p-5 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div class="flex items-center space-x-2">
+                <span class="text-2xl">🛡️</span>
+                <h2 class="text-lg sm:text-xl font-black">Quản lý người dùng</h2>
+                <span class="px-2 py-0.5 bg-indigo-500/30 text-indigo-300 rounded-full text-[10px] font-bold uppercase tracking-wider">Admin Only</span>
+              </div>
+              <p class="text-xs text-slate-300 mt-1">Phân quyền Admin, kích hoạt hoặc vô hiệu hoá tài khoản thành viên.</p>
+            </div>
+            <div class="flex items-center space-x-2 text-xs">
+              <span class="px-3 py-1.5 bg-white/10 rounded-xl font-bold">Tổng: {{ adminUsers.length }}</span>
+              <span class="px-3 py-1.5 bg-emerald-500/20 text-emerald-300 rounded-xl font-bold">Active: {{ adminUsers.filter(u => u.status === 'active').length }}</span>
+            </div>
+          </div>
+
+          <!-- Search & Filter Card -->
+          <div class="bg-white p-4 rounded-3xl border border-slate-200/90 shadow-sm space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <!-- Search Input -->
+              <div class="relative sm:col-span-1">
+                <input v-model="adminSearchQuery" type="text" placeholder="Tìm theo tên, email..."
+                  class="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:border-indigo-500 outline-none" />
+                <span class="absolute left-2.5 top-2.5 text-slate-400 text-xs">🔍</span>
+              </div>
+
+              <!-- Role Filter -->
+              <div class="flex items-center space-x-1.5 text-xs">
+                <label class="text-slate-500 font-bold shrink-0">Role:</label>
+                <select v-model="adminFilterRole" class="flex-1 px-2.5 py-2 text-xs rounded-xl border border-slate-200 bg-white font-medium outline-none">
+                  <option value="all">Tất cả role</option>
+                  <option value="admin">🛡️ Admin</option>
+                  <option value="user">👤 User</option>
+                </select>
+              </div>
+
+              <!-- Status Filter -->
+              <div class="flex items-center space-x-1.5 text-xs">
+                <label class="text-slate-500 font-bold shrink-0">Trạng thái:</label>
+                <select v-model="adminFilterStatus" class="flex-1 px-2.5 py-2 text-xs rounded-xl border border-slate-200 bg-white font-medium outline-none">
+                  <option value="all">Tất cả trạng thái</option>
+                  <option value="active">● Đang hoạt động</option>
+                  <option value="disabled">● Đã vô hiệu hoá</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Loading state -->
+          <div v-if="adminLoading" class="text-center py-12 text-slate-400 font-medium text-xs">
+            Đang tải danh sách người dùng...
+          </div>
+
+          <!-- Users List -->
+          <div v-else class="space-y-2.5">
+            <div v-if="filteredAdminUsers.length === 0" class="bg-white p-8 rounded-3xl border border-slate-200/80 text-center text-slate-400 text-xs">
+              Không tìm thấy thành viên nào phù hợp với bộ lọc.
+            </div>
+
+            <div v-for="user in filteredAdminUsers" :key="user.id"
+              :class="['bg-white p-4 rounded-3xl border shadow-sm transition flex flex-col sm:flex-row sm:items-center justify-between gap-3',
+                      user.status === 'disabled' ? 'border-rose-200 bg-rose-50/20 opacity-80' : 'border-slate-200/90']">
+              <!-- User Info -->
+              <div class="flex items-center space-x-3 min-w-0">
+                <div class="w-11 h-11 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-black text-sm flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                  <img v-if="user.avatar_url" :src="user.avatar_url" class="w-full h-full object-cover" />
+                  <span v-else>{{ initials(user.display_name) }}</span>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center space-x-2 flex-wrap">
+                    <h4 class="font-extrabold text-slate-800 text-sm truncate">{{ user.display_name }}</h4>
+                    <span v-if="currentUser && currentUser.id === user.id" class="px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded text-[10px] font-bold">Bạn</span>
+                    <!-- Role badge -->
+                    <span :class="['px-2 py-0.5 rounded-full text-[10px] font-extrabold inline-flex items-center space-x-1',
+                                  user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600']">
+                      <span>{{ user.role === 'admin' ? '🛡️ Admin' : '👤 User' }}</span>
+                    </span>
+                    <!-- Status badge -->
+                    <span :class="['px-2 py-0.5 rounded-full text-[10px] font-extrabold',
+                                  user.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700']">
+                      {{ user.status === 'active' ? '● Hoạt động' : '● Vô hiệu hoá' }}
+                    </span>
+                  </div>
+                  <div class="text-[11px] text-slate-400 font-mono truncate mt-0.5">
+                    {{ user.email }} • Tham gia: {{ formatDate(user.created_at) }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="flex items-center space-x-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
+                <!-- If Active: Change Role Buttons -->
+                <template v-if="user.status === 'active'">
+                  <button v-if="user.role === 'user'" @click="openConfirmPromoteAdmin(user)"
+                    class="py-1.5 px-3 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold rounded-xl text-xs transition active:scale-95">
+                    Lên Admin
+                  </button>
+                  <button v-else-if="user.role === 'admin'" @click="openConfirmDemoteAdmin(user)"
+                    class="py-1.5 px-3 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold rounded-xl text-xs transition active:scale-95">
+                    Gỡ Admin
+                  </button>
+                  <!-- Disable Button -->
+                  <button @click="openConfirmDisableUser(user)"
+                    class="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl text-xs transition active:scale-95">
+                    Vô hiệu hoá
+                  </button>
+                </template>
+
+                <!-- If Disabled: Enable Button -->
+                <template v-else>
+                  <button @click="openConfirmEnableUser(user)"
+                    class="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition active:scale-95 shadow-sm">
+                    Kích hoạt lại
+                  </button>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
 
     </main>
@@ -1168,6 +1290,33 @@
       </div>
     </div>
 
+    <!-- ================== MODAL: CONFIRM ACTION (Popup giữa màn hình) ================== -->
+    <div v-if="confirmModal.show" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+      <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-slate-100 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 class="font-black text-slate-800 text-base">{{ confirmModal.title }}</h3>
+          <button @click="confirmModal.show = false" class="text-slate-400 hover:text-slate-700 text-2xl font-bold p-1 leading-none">✕</button>
+        </div>
+
+        <p class="text-xs text-slate-600 leading-relaxed">{{ confirmModal.message }}</p>
+
+        <div v-if="confirmModal.error" class="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold">
+          {{ confirmModal.error }}
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center space-x-3">
+          <button type="button" @click="confirmModal.show = false"
+            class="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl text-xs transition active:scale-95 text-center">
+            Huỷ
+          </button>
+          <button :disabled="confirmModal.loading" type="button" @click="executeConfirmAction"
+            :class="['flex-1 py-3 px-4 text-white font-bold rounded-2xl text-xs shadow-md transition disabled:opacity-50 active:scale-95 text-center', confirmModal.confirmClass]">
+            {{ confirmModal.loading ? 'Đang xử lý...' : confirmModal.confirmText }}
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -1184,15 +1333,28 @@
           window.scrollTo(0, 0);
           document.documentElement.scrollTop = 0;
           document.body.scrollTop = 0;
+          if (currentTab.value === 'admin_users') {
+            if (!currentUser.value || currentUser.value.role !== 'admin') {
+              currentTab.value = 'dashboard';
+              return;
+            }
+            loadAdminUsers();
+          }
         });
 
-        const tabs = [
-          { id: 'dashboard', name: 'Tổng quan', shortName: 'Tổng quan', icon: '📊' },
-          { id: 'bills', name: 'Hoá đơn', shortName: 'Hoá đơn', icon: '🧾' },
-          { id: 'fund', name: 'Quỹ nhóm', shortName: 'Quỹ nhóm', icon: '💰' },
-          { id: 'debts', name: 'Công nợ', shortName: 'Công nợ', icon: '💳' },
-          { id: 'profile', name: 'Cá nhân', shortName: 'Cá nhân', icon: '👤' },
-        ];
+        const tabs = computed(() => {
+          const list = [
+            { id: 'dashboard', name: 'Tổng quan', shortName: 'Tổng quan', icon: '📊' },
+            { id: 'bills', name: 'Hoá đơn', shortName: 'Hoá đơn', icon: '🧾' },
+            { id: 'fund', name: 'Quỹ nhóm', shortName: 'Quỹ', icon: '💰' },
+            { id: 'debts', name: 'Công nợ', shortName: 'Nợ', icon: '💳' },
+            { id: 'profile', name: 'Cá nhân', shortName: 'Cá nhân', icon: '👤' },
+          ];
+          if (currentUser.value && currentUser.value.role === 'admin') {
+            list.push({ id: 'admin_users', name: 'Quản trị User', shortName: 'Admin', icon: '🛡️' });
+          }
+          return list;
+        });
 
         const categories = ['Ăn uống', 'Cafe', 'Di chuyển', 'Event', 'Khác'];
 
@@ -1362,7 +1524,10 @@
             }
             const res = await fetch(endpoint, options);
             const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.detail || 'Có lỗi xảy ra');
+            if (!res.ok) {
+              const msg = data.message || (typeof data.detail === 'string' ? data.detail : (data.detail && data.detail.message)) || 'Có lỗi xảy ra';
+              throw new Error(msg);
+            }
             return data;
           } catch (err) {
             throw err;
@@ -1838,6 +2003,140 @@
           }
         };
 
+        const adminUsers = ref([]);
+        const adminLoading = ref(false);
+        const adminSearchQuery = ref('');
+        const adminFilterRole = ref('all');
+        const adminFilterStatus = ref('all');
+
+        const loadAdminUsers = async () => {
+          adminLoading.value = true;
+          try {
+            const res = await api('/api/admin/users');
+            adminUsers.value = res.items || [];
+          } catch (err) {
+            if (err.message && err.message.includes('403')) {
+              currentTab.value = 'dashboard';
+            }
+          } finally {
+            adminLoading.value = false;
+          }
+        };
+
+        const filteredAdminUsers = computed(() => {
+          return adminUsers.value.filter(u => {
+            if (adminFilterRole.value !== 'all' && u.role !== adminFilterRole.value) return false;
+            if (adminFilterStatus.value !== 'all' && u.status !== adminFilterStatus.value) return false;
+            if (adminSearchQuery.value) {
+              const q = adminSearchQuery.value.toLowerCase().trim();
+              const matchName = (u.display_name || '').toLowerCase().includes(q);
+              const matchEmail = (u.email || '').toLowerCase().includes(q);
+              if (!matchName && !matchEmail) return false;
+            }
+            return true;
+          });
+        });
+
+        const confirmModal = ref({
+          show: false,
+          title: '',
+          message: '',
+          confirmText: 'Xác nhận',
+          confirmClass: 'bg-indigo-600 hover:bg-indigo-700',
+          loading: false,
+          error: '',
+          action: null
+        });
+
+        const openConfirmPromoteAdmin = (user) => {
+          confirmModal.value = {
+            show: true,
+            title: `Chuyển ${user.display_name} thành Admin?`,
+            message: 'Admin có quyền truy cập các chức năng quản trị và phân quyền tài khoản.',
+            confirmText: 'Xác nhận lên Admin',
+            confirmClass: 'bg-purple-600 hover:bg-purple-700',
+            loading: false,
+            error: '',
+            action: async () => {
+              await api(`/api/admin/users/${user.id}/role`, { method: 'PATCH', body: { role: 'admin' } });
+              await loadAdminUsers();
+              confirmModal.value.show = false;
+            }
+          };
+        };
+
+        const openConfirmDemoteAdmin = (user) => {
+          confirmModal.value = {
+            show: true,
+            title: `Gỡ quyền Admin của ${user.display_name}?`,
+            message: 'User này sẽ mất quyền truy cập khu vực quản trị.',
+            confirmText: 'Gỡ quyền Admin',
+            confirmClass: 'bg-amber-600 hover:bg-amber-700',
+            loading: false,
+            error: '',
+            action: async () => {
+              await api(`/api/admin/users/${user.id}/role`, { method: 'PATCH', body: { role: 'user' } });
+              await loadAdminUsers();
+              if (currentUser.value && currentUser.value.id === user.id) {
+                currentUser.value.role = 'user';
+                currentTab.value = 'dashboard';
+              }
+              confirmModal.value.show = false;
+            }
+          };
+        };
+
+        const openConfirmDisableUser = (user) => {
+          confirmModal.value = {
+            show: true,
+            title: `Vô hiệu hóa tài khoản ${user.display_name}?`,
+            message: 'User sẽ không thể tiếp tục sử dụng hệ thống. Dữ liệu cũ (bill, nợ, quỹ) vẫn được giữ lại.',
+            confirmText: 'Vô hiệu hoá',
+            confirmClass: 'bg-rose-600 hover:bg-rose-700',
+            loading: false,
+            error: '',
+            action: async () => {
+              await api(`/api/admin/users/${user.id}/status`, { method: 'PATCH', body: { status: 'disabled' } });
+              if (currentUser.value && currentUser.value.id === user.id) {
+                logout();
+                return;
+              }
+              await loadAdminUsers();
+              confirmModal.value.show = false;
+            }
+          };
+        };
+
+        const openConfirmEnableUser = (user) => {
+          confirmModal.value = {
+            show: true,
+            title: `Kích hoạt lại tài khoản ${user.display_name}?`,
+            message: 'User sẽ có thể đăng nhập và sử dụng hệ thống bình thường. Quyền và vai trò cũ được giữ nguyên.',
+            confirmText: 'Kích hoạt lại',
+            confirmClass: 'bg-emerald-600 hover:bg-emerald-700',
+            loading: false,
+            error: '',
+            action: async () => {
+              await api(`/api/admin/users/${user.id}/status`, { method: 'PATCH', body: { status: 'active' } });
+              await loadAdminUsers();
+              confirmModal.value.show = false;
+            }
+          };
+        };
+
+        const executeConfirmAction = async () => {
+          if (!confirmModal.value.action) return;
+          confirmModal.value.loading = true;
+          confirmModal.value.error = '';
+          try {
+            await confirmModal.value.action();
+          } catch (err) {
+            confirmModal.value.error = err.message || 'Đã có lỗi xảy ra.';
+          } finally {
+            confirmModal.value.loading = false;
+          }
+        };
+
         onMounted(() => {
           checkAuth();
         });
@@ -1848,6 +2147,19 @@
           debtSubTab,
           tabs,
           categories,
+          adminUsers,
+          adminLoading,
+          adminSearchQuery,
+          adminFilterRole,
+          adminFilterStatus,
+          filteredAdminUsers,
+          loadAdminUsers,
+          confirmModal,
+          openConfirmPromoteAdmin,
+          openConfirmDemoteAdmin,
+          openConfirmDisableUser,
+          openConfirmEnableUser,
+          executeConfirmAction,
           dashboardData,
           bills,
           billsLoading,
