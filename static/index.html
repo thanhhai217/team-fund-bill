@@ -743,81 +743,99 @@
         </div>
 
         <!-- 6. PROFILE VIEW -->
-        <div v-if="currentTab === 'profile'" class="max-w-md mx-auto">
-          <div class="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+        <div v-if="currentTab === 'profile'" class="max-w-md w-full mx-auto space-y-4">
+          <!-- Card 1: Thông tin tài khoản & VietQR -->
+          <div class="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm space-y-4">
             <div class="flex items-center space-x-3.5 border-b border-slate-100 pb-4">
-              <div class="w-14 h-14 rounded-full bg-indigo-600 text-white font-black text-lg flex items-center justify-center overflow-hidden shadow-md shrink-0">
+              <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-black text-xl flex items-center justify-center overflow-hidden shadow-md shrink-0">
                 <img v-if="profileForm.avatar_url" :src="profileForm.avatar_url" class="w-full h-full object-cover" />
                 <span v-else>{{ initials(profileForm.display_name) }}</span>
               </div>
-              <div class="min-w-0">
-                <h3 class="font-bold text-slate-800 text-base truncate">{{ currentUser.display_name }}</h3>
+              <div class="min-w-0 flex-1">
+                <h3 class="font-extrabold text-slate-800 text-base truncate">{{ currentUser.display_name }}</h3>
                 <p class="text-xs text-slate-500 font-mono truncate">{{ currentUser.email }}</p>
               </div>
             </div>
 
             <form @submit.prevent="updateProfile" class="space-y-3.5 text-xs">
               <div>
-                <label class="block font-bold text-slate-600 mb-1">Tên hiển thị</label>
+                <label class="block font-bold text-slate-600 mb-1">Tên hiển thị *</label>
                 <input v-model="profileForm.display_name" type="text" required
-                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-base sm:text-xs font-medium" />
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-sm font-semibold" />
               </div>
 
               <div>
-                <label class="block font-bold text-slate-600 mb-1">Avatar URL (tuỳ chọn)</label>
-                <input v-model="profileForm.avatar_url" type="url" placeholder="https://..."
-                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-base sm:text-xs" />
+                <label class="block font-bold text-slate-600 mb-1">Ảnh đại diện (URL tuỳ chọn)</label>
+                <input v-model="profileForm.avatar_url" type="url" placeholder="https://example.com/avatar.jpg"
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-xs" />
               </div>
 
-              <div class="border-t border-slate-100 pt-3">
-                <h4 class="font-bold text-slate-800 text-xs mb-2">Tài khoản nhận tiền (VietQR)</h4>
+              <div class="border-t border-slate-100 pt-3 space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <h4 class="font-bold text-slate-800 text-xs">Tài khoản nhận tiền (VietQR)</h4>
+                  <span class="text-[10px] text-slate-400">Dùng để tạo mã QR chuyển khoản</span>
+                </div>
                 <div class="grid grid-cols-2 gap-2">
                   <div>
                     <label class="block text-[11px] font-bold text-slate-500 mb-1">Ngân hàng</label>
-                    <input v-model="profileForm.bank_name" type="text" placeholder="VIB, VCB..."
-                      class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-base sm:text-xs uppercase" />
+                    <input v-model="profileForm.bank_name" type="text" placeholder="VIB, VCB, MB..."
+                      class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-xs font-bold uppercase" />
                   </div>
                   <div>
                     <label class="block text-[11px] font-bold text-slate-500 mb-1">Số tài khoản</label>
-                    <input v-model="profileForm.bank_account_number" type="text" inputmode="numeric" placeholder="000123..."
-                      class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-base sm:text-xs font-mono" />
+                    <input v-model="profileForm.bank_account_number" type="text" inputmode="numeric" placeholder="000123456789"
+                      class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-xs font-mono font-bold" />
                   </div>
                 </div>
-                <div class="mt-2">
+                <div>
                   <label class="block text-[11px] font-bold text-slate-500 mb-1">Tên chủ tài khoản</label>
                   <input v-model="profileForm.bank_account_name" type="text" placeholder="NGUYEN VAN A"
-                    class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-base sm:text-xs uppercase" />
+                    class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-xs font-bold uppercase" />
                 </div>
               </div>
 
               <!-- Live QR Preview -->
               <div v-if="profileForm.bank_name && profileForm.bank_account_number" class="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
-                <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Xem trước VietQR</p>
+                <p class="text-[10px] font-bold text-slate-400 uppercase mb-1.5">Mã VietQR của bạn</p>
                 <img :src="'https://img.vietqr.io/image/' + encodeURIComponent(profileForm.bank_name) + '-' + encodeURIComponent(profileForm.bank_account_number) + '-compact2.png'"
-                  alt="VietQR" class="mx-auto max-w-[160px] rounded-xl shadow-sm border border-slate-200" />
-              </div>
-
-              <!-- Change PIN Section -->
-              <div class="border-t border-slate-100 pt-3">
-                <h4 class="font-bold text-slate-800 text-xs mb-1.5">Đổi mã PIN đăng nhập</h4>
-                <p class="text-[11px] text-slate-400 mb-2">Thiết lập mã PIN cá nhân 4 số để đăng nhập nhanh:</p>
-                <div class="flex items-center space-x-2">
-                  <input v-model="changePinVal" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="••••"
-                    class="flex-1 px-3 py-2 text-center text-xl tracking-[0.4em] font-mono rounded-xl border border-slate-200 outline-none focus:border-indigo-500" />
-                  <button type="button" @click="handleChangePin" :disabled="changePinLoading || !changePinVal || changePinVal.length !== 4"
-                    class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition disabled:opacity-50 active:scale-95 shrink-0">
-                    {{ changePinLoading ? 'Đang đổi...' : 'Đổi PIN' }}
-                  </button>
-                </div>
-                <p v-if="changePinMsg" :class="['text-xs mt-1.5 font-bold', changePinMsg.includes('thành công') ? 'text-emerald-600' : 'text-rose-600']">
-                  {{ changePinMsg }}
-                </p>
+                  alt="VietQR" class="mx-auto max-w-[150px] rounded-xl shadow-sm border border-slate-200" />
               </div>
 
               <button :disabled="profileLoading" type="submit"
-                class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition disabled:opacity-50 text-xs sm:text-sm active:scale-98">
-                {{ profileLoading ? 'Đang lưu...' : 'Lưu thông tin ngân hàng & tên' }}
+                class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition disabled:opacity-50 text-xs sm:text-sm active:scale-95">
+                {{ profileLoading ? 'Đang lưu...' : 'Lưu thông tin hồ sơ' }}
               </button>
+            </form>
+          </div>
+
+          <!-- Card 2: Bảo mật & Mã PIN (Tách biệt thành Card riêng) -->
+          <div class="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm space-y-3 text-xs">
+            <div class="flex items-center space-x-2 border-b border-slate-100 pb-2.5">
+              <span class="text-base">🔒</span>
+              <div>
+                <h4 class="font-extrabold text-slate-800 text-sm">Bảo mật & Đổi mã PIN</h4>
+                <p class="text-[11px] text-slate-400">Đổi mã PIN 4 số đăng nhập tài khoản</p>
+              </div>
+            </div>
+
+            <form @submit.prevent="handleChangePin" class="space-y-3">
+              <div>
+                <label class="block text-[11px] font-bold text-slate-600 mb-1">Mã PIN mới (4 chữ số)</label>
+                <div class="flex items-center space-x-2">
+                  <div class="relative flex-1 min-w-0">
+                    <input v-model="changePinVal" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="••••"
+                      class="w-full px-3 py-2 text-center text-2xl tracking-[0.4em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-slate-800" />
+                  </div>
+                  <button :disabled="changePinLoading || !changePinVal || changePinVal.length !== 4" type="submit"
+                    class="py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition disabled:opacity-50 active:scale-95 shrink-0">
+                    {{ changePinLoading ? 'Đang đổi...' : 'Đổi PIN' }}
+                  </button>
+                </div>
+              </div>
+
+              <p v-if="changePinMsg" :class="['text-xs font-bold pt-1', changePinMsg.includes('thành công') ? 'text-emerald-600' : 'text-rose-600']">
+                {{ changePinMsg }}
+              </p>
             </form>
           </div>
         </div>
@@ -830,13 +848,10 @@
     <nav v-if="currentUser && !mustChangePin" class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-1 pt-1.5 safe-nav-pb shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
       <div class="flex items-center justify-around">
         <button v-for="tab in tabs" :key="tab.id" @click="currentTab = tab.id"
-          :class="['flex flex-col items-center py-1 px-2.5 rounded-xl transition relative active:scale-90',
+          :class="['flex flex-col items-center py-1 px-3 rounded-xl transition relative active:scale-90',
                   currentTab === tab.id ? 'text-indigo-600 font-bold bg-indigo-50/70' : 'text-slate-400 font-medium']">
           <span class="text-lg leading-none">{{ tab.icon }}</span>
           <span class="text-[10px] mt-1">{{ tab.shortName || tab.name }}</span>
-          <span v-if="tab.id === 'notifications' && unreadCount > 0" class="absolute top-0.5 right-2 w-3.5 h-3.5 bg-rose-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center">
-            {{ unreadCount }}
-          </span>
         </button>
       </div>
     </nav>
@@ -1098,9 +1113,8 @@
         const tabs = [
           { id: 'dashboard', name: 'Tổng quan', shortName: 'Tổng quan', icon: '📊' },
           { id: 'bills', name: 'Hoá đơn', shortName: 'Hoá đơn', icon: '🧾' },
-          { id: 'fund', name: 'Quỹ nhóm', shortName: 'Quỹ', icon: '💰' },
+          { id: 'fund', name: 'Quỹ nhóm', shortName: 'Quỹ nhóm', icon: '💰' },
           { id: 'debts', name: 'Công nợ', shortName: 'Công nợ', icon: '💳' },
-          { id: 'notifications', name: 'Thông báo', shortName: 'Báo', icon: '🔔' },
           { id: 'profile', name: 'Cá nhân', shortName: 'Cá nhân', icon: '👤' },
         ];
 
