@@ -171,9 +171,90 @@
                 class="w-full px-4 py-3 text-center text-3xl tracking-[0.5em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-slate-800 transition" />
             </div>
 
+            <!-- Forgot PIN link (for registered accounts) -->
+            <div v-if="!isNewUser" class="flex justify-end pt-0.5">
+              <button type="button" @click="startForgotPin"
+                class="text-xs text-indigo-600 hover:text-indigo-800 font-bold transition active:scale-95">
+                Quên mã PIN?
+              </button>
+            </div>
+
             <button :disabled="authLoading || !authPin || authPin.length !== 4" type="submit"
               class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition active:scale-[0.98] disabled:opacity-50 text-sm">
               {{ authLoading ? 'Đang xác thực...' : (isNewUser ? 'Tiếp tục' : 'Đăng nhập') }}
+            </button>
+          </form>
+
+          <!-- Step 2b: Forgot PIN - Verify Identity -->
+          <form v-if="authStep === 'forgot_pin_verify'" @submit.prevent="handleForgotPinVerify" class="space-y-4">
+            <div class="text-left pb-2 border-b border-slate-100">
+              <span class="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-bold rounded uppercase tracking-wider">
+                Quên mã PIN
+              </span>
+              <h3 class="text-base font-black text-slate-800 mt-1.5">Xác minh danh tính</h3>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                Hệ thống đã gửi mã xác thực tới Admin. Vui lòng liên hệ Admin để nhận mã 4 số và nhập vào ô dưới đây.
+              </p>
+            </div>
+
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-600">
+              <span class="font-bold">Tài khoản:</span> <span class="font-mono text-indigo-900 font-bold">{{ authEmail }}</span>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Mã xác thực (4 số)</label>
+              <input v-model="forgotPinCode" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="••••"
+                class="w-full px-4 py-2.5 text-center text-3xl tracking-[0.5em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-slate-800 transition" />
+            </div>
+
+            <div class="flex items-center space-x-2 pt-1">
+              <button type="button" @click="authStep = 'pin'; authError = ''; authSuccess = ''"
+                class="flex-1 py-3 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition active:scale-95 text-center">
+                Quay lại
+              </button>
+              <button :disabled="authLoading || !forgotPinCode || forgotPinCode.length !== 4" type="submit"
+                class="flex-1 py-3 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md shadow-indigo-100 transition disabled:opacity-50 active:scale-95 text-center">
+                {{ authLoading ? 'Đang kiểm tra...' : 'Xác minh mã' }}
+              </button>
+            </div>
+          </form>
+
+          <!-- Step 2c: Forgot PIN - Enter New PIN 2 times -->
+          <form v-if="authStep === 'forgot_pin_new'" @submit.prevent="handleForgotPinSubmit" class="space-y-4">
+            <div class="text-left pb-2 border-b border-slate-100">
+              <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded uppercase tracking-wider">
+                Tạo mã PIN mới
+              </span>
+              <h3 class="text-base font-black text-slate-800 mt-1.5">Đặt lại mã PIN</h3>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                Nhập mã PIN 4 chữ số mới 2 lần để bảo mật tài khoản.
+              </p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Mã PIN mới (4 số)</label>
+              <input v-model="forgotNewPin1" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="••••"
+                class="w-full px-4 py-2.5 text-center text-3xl tracking-[0.5em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-slate-800 transition" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Nhập lại mã PIN mới (xác nhận)</label>
+              <input v-model="forgotNewPin2" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="••••"
+                class="w-full px-4 py-2.5 text-center text-3xl tracking-[0.5em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-slate-800 transition" />
+            </div>
+
+            <div v-if="forgotNewPin2.length === 4">
+              <p v-if="forgotNewPin1 === forgotNewPin2" class="text-xs text-emerald-600 font-bold flex items-center space-x-1">
+                <span>✓</span><span>Mã PIN trùng khớp</span>
+              </p>
+              <p v-else class="text-xs text-rose-600 font-bold flex items-center space-x-1">
+                <span>✕</span><span>Mã PIN xác nhận không khớp</span>
+              </p>
+            </div>
+
+            <button :disabled="authLoading || !forgotNewPin1 || forgotNewPin1.length !== 4 || forgotNewPin1 !== forgotNewPin2" type="submit"
+              class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition active:scale-[0.98] disabled:opacity-50 text-sm">
+              {{ authLoading ? 'Đang lưu...' : 'Đặt lại mã PIN' }}
             </button>
           </form>
 
@@ -216,9 +297,16 @@
             </button>
           </form>
 
+          <!-- Error Alert -->
           <div v-if="authError" class="mt-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center space-x-2">
             <span>⚠️</span>
             <span>{{ authError }}</span>
+          </div>
+
+          <!-- Success Alert -->
+          <div v-if="authSuccess" class="mt-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl flex items-center space-x-2">
+            <span>✓</span>
+            <span>{{ authSuccess }}</span>
           </div>
         </div>
       </div>
@@ -1365,6 +1453,11 @@
         const mustChangePin = ref(false);
         const authLoading = ref(false);
         const authError = ref('');
+        const authSuccess = ref('');
+        const forgotPinCode = ref('');
+        const forgotResetToken = ref('');
+        const forgotNewPin1 = ref('');
+        const forgotNewPin2 = ref('');
         const newPin1 = ref('');
         const newPin2 = ref('');
         const pinSubmitLoading = ref(false);
@@ -1556,6 +1649,7 @@
         const handleEmailSubmit = async () => {
           authLoading.value = true;
           authError.value = '';
+          authSuccess.value = '';
           try {
             const res = await api('/api/auth/check-email', {
               method: 'POST',
@@ -1574,6 +1668,7 @@
         const handleLogin = async () => {
           authLoading.value = true;
           authError.value = '';
+          authSuccess.value = '';
           try {
             const res = await api('/api/auth/login', {
               method: 'POST',
@@ -1613,7 +1708,7 @@
               method: 'POST',
               body: { new_pin: newPin1.value }
             });
-            if (currentUser.value) currentUser.value.status = 'ACTIVE';
+            if (currentUser.value) currentUser.value.status = 'active';
             mustChangePin.value = false;
             authStep.value = 'email';
             await loadAllData();
@@ -1621,6 +1716,67 @@
             authError.value = err.message;
           } finally {
             pinSubmitLoading.value = false;
+          }
+        };
+
+        const startForgotPin = async () => {
+          authLoading.value = true;
+          authError.value = '';
+          authSuccess.value = '';
+          try {
+            await api('/api/auth/forgot-pin/request', {
+              method: 'POST',
+              body: { email: authEmail.value }
+            });
+            forgotPinCode.value = '';
+            authStep.value = 'forgot_pin_verify';
+          } catch (err) {
+            authError.value = err.message || 'Không thể yêu cầu đặt lại mã PIN.';
+          } finally {
+            authLoading.value = false;
+          }
+        };
+
+        const handleForgotPinVerify = async () => {
+          if (!forgotPinCode.value || forgotPinCode.value.length !== 4) return;
+          authLoading.value = true;
+          authError.value = '';
+          try {
+            const res = await api('/api/auth/forgot-pin/verify', {
+              method: 'POST',
+              body: { email: authEmail.value, code: forgotPinCode.value }
+            });
+            forgotResetToken.value = res.reset_token;
+            forgotNewPin1.value = '';
+            forgotNewPin2.value = '';
+            authStep.value = 'forgot_pin_new';
+          } catch (err) {
+            authError.value = err.message || 'Mã xác thực không hợp lệ.';
+          } finally {
+            authLoading.value = false;
+          }
+        };
+
+        const handleForgotPinSubmit = async () => {
+          if (!forgotNewPin1.value || forgotNewPin1.value.length !== 4) return;
+          if (forgotNewPin1.value !== forgotNewPin2.value) {
+            authError.value = 'Mã PIN xác nhận không trùng khớp.';
+            return;
+          }
+          authLoading.value = true;
+          authError.value = '';
+          try {
+            const res = await api('/api/auth/forgot-pin/reset', {
+              method: 'POST',
+              body: { reset_token: forgotResetToken.value, new_pin: forgotNewPin1.value }
+            });
+            authSuccess.value = res.message || 'Đặt lại mã PIN thành công! Vui lòng đăng nhập bằng mã PIN mới.';
+            authPin.value = '';
+            authStep.value = 'pin';
+          } catch (err) {
+            authError.value = err.message || 'Không thể đặt lại mã PIN.';
+          } finally {
+            authLoading.value = false;
           }
         };
 
@@ -2215,6 +2371,13 @@
           authPin,
           authLoading,
           authError,
+          authSuccess,
+          forgotPinCode,
+          forgotNewPin1,
+          forgotNewPin2,
+          startForgotPin,
+          handleForgotPinVerify,
+          handleForgotPinSubmit,
           isNewUser,
           mustChangePin,
           newPin1,

@@ -105,6 +105,43 @@ def test_admin_flow():
     assert res.json()["user"]["status"] == "active"
     print("✓ Case 7 Passed: Enabled user logs in with role and active status intact")
 
+    # Case 8: Forgot PIN flow
+    res = client.post("/api/auth/forgot-pin/request", json={"email": "member@vib.com"})
+    assert res.status_code == 200, res.text
+
+    # Extract OTP code from test DB
+    conn = sqlite3.connect(temp_db.name)
+    conn.row_factory = sqlite3.Row
+    otp = conn.execute("SELECT * FROM otp_codes WHERE email = 'member@vib.com' AND purpose = 'RESET_PIN' AND used_at IS NULL ORDER BY id DESC LIMIT 1").fetchone()
+    conn.close()
+
+    salt = 'team-fund-salt-secret-2026'
+    import hashlib
+    found_c = None
+    for c in range(1000, 10000):
+        if hashlib.sha256(f"{c}:{salt}".encode()).hexdigest() == otp["code_hash"]:
+            found_c = str(c)
+            break
+    assert found_c is not None
+
+    # Verify code to get reset_token
+    res = client.post("/api/auth/forgot-pin/verify", json={"email": "member@vib.com", "code": found_c})
+    assert res.status_code == 200, res.text
+    reset_tok = res.json()["reset_token"]
+
+    # Reset PIN to 6789
+    res = client.post("/api/auth/forgot-pin/reset", json={"reset_token": reset_tok, "new_pin": "6789"})
+    assert res.status_code == 200, res.text
+
+    # Old PIN fails
+    res = client.post("/api/auth/login", json={"email": "member@vib.com", "pin": "1234"})
+    assert res.status_code == 400
+
+    # New PIN succeeds
+    res = client.post("/api/auth/login", json={"email": "member@vib.com", "pin": "6789"})
+    assert res.status_code == 200
+    print("✓ Case 8 Passed: Forgot PIN flow securely verified, old PIN revoked, new PIN works")
+
     print("\n🎉 ALL ADMIN SPEC TESTS COMPLETED 100% SUCCESSFULLY!")
 
 if __name__ == "__main__":

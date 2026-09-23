@@ -279,6 +279,17 @@ class LoginReq(BaseModel):
     email: str
     pin: str = Field(min_length=4, max_length=4)
 
+class ForgotPinReq(BaseModel):
+    email: str
+
+class ForgotPinVerifyReq(BaseModel):
+    email: str
+    code: str = Field(min_length=4, max_length=4)
+
+class ForgotPinResetReq(BaseModel):
+    reset_token: str
+    new_pin: str = Field(min_length=4, max_length=4)
+
 class ChangeUserRoleReq(BaseModel):
     role: str
 
@@ -384,6 +395,95 @@ def change_pin(data: ChangePinReq, user: dict = Depends(get_current_user), conn:
         conn.execute("UPDATE users SET pin_hash = ?, must_change_pin = 0, updated_at = ? WHERE id = ?", (new_pin_h, now_str, user["id"]))
 
     return {"message": "Đổi mã PIN thành công"}
+
+@app.post("/api/auth/forgot-pin/request")
+async def forgot_pin_request(data: ForgotPinReq, conn: sqlite3.Connection = Depends(get_db)):
+    email = data.email.strip().lower()
+    user = conn.execute("SELECT id, display_name, status FROM users WHERE email = ?", (email,)).fetchone()
+    if not user:
+        raise HTTPException(status_code=404, detail="Email không tồn tại trong hệ thống.")
+    if user["status"] == "disabled":
+        raise HTTPException(status_code=403, detail="Tài khoản đã bị vô hiệu hóa.")
+
+    # Sinh mã xác thực 4 số
+    code = f"{secrets.randbelow(9000) + 1000}"
+    code_h = hash_code(code)
+    now = datetime.now(timezone.utc)
+    exp = (now + timedelta(minutes=15)).isoformat()
+    now_str = now_iso()
+
+    with conn:
+        conn.execute("""
+            INSERT INTO otp_codes (email, purpose, code_hash, expires_at, created_at)
+            VALUES (?, 'RESET_PIN', ?, ?, ?)
+        """, (email, code_h, exp, now_str))
+
+    time_vn = datetime.now(timezone(timedelta(hours=7))).strftime("%H:%M:%S %d/%m/%Y")
+    tele_msg = (
+        f"🔐 <b>[Team Fund & Bill] Yêu cầu đặt lại mã PIN</b>\n\n"
+        f"👤 <b>Email:</b> <code>{email}</code>\n"
+        f"🔑 <b>Mã xác thực:</b> <code>{code}</code>\n"
+        f"⏰ <b>Hạn dùng:</b> 15 phút ({time_vn})\n\n"
+        f"👉 <i>Cung cấp mã xác thực này cho thành viên để tạo mã PIN mới.</i>"
+    )
+    asyncio.create_task(send_telegram_admin(tele_msg))
+
+    return {"message": "Mã xác thực đã được gửi tới Admin. Vui lòng liên hệ Admin để lấy mã."}
+
+@app.post("/api/auth/forgot-pin/verify")
+def forgot_pin_verify(data: ForgotPinVerifyReq, conn: sqlite3.Connection = Depends(get_db)):
+    email = data.email.strip().lower()
+    code_h = hash_code(data.code.strip())
+    now_str = now_iso()
+
+    with conn:
+        row = conn.execute("""
+            SELECT id FROM otp_codes
+            WHERE email = ? AND purpose = 'RESET_PIN' AND code_hash = ? AND used_at IS NULL AND expires_at > ?
+            ORDER BY id DESC LIMIT 1
+        """, (email, code_h, now_str)).fetchone()
+
+        if not row:
+            raise HTTPException(status_code=400, detail="Mã xác thực không chính xác hoặc đã hết hạn.")
+
+        conn.execute("UPDATE otp_codes SET used_at = ? WHERE id = ?", (now_str, row["id"]))
+
+        reset_token = secrets.token_hex(24)
+        exp = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
+        conn.execute("""
+            INSERT INTO otp_codes (email, purpose, code_hash, expires_at, created_at)
+            VALUES (?, 'RESET_TOKEN', ?, ?, ?)
+        """, (email, reset_token, exp, now_str))
+
+    return {"reset_token": reset_token, "message": "Xác minh danh tính thành công."}
+
+@app.post("/api/auth/forgot-pin/reset")
+def forgot_pin_reset(data: ForgotPinResetReq, conn: sqlite3.Connection = Depends(get_db)):
+    if not (data.new_pin.isdigit() and len(data.new_pin) == 4):
+        raise HTTPException(status_code=400, detail="Mã PIN mới phải gồm đúng 4 chữ số.")
+
+    now_str = now_iso()
+    new_pin_h = hash_pin(data.new_pin.strip())
+
+    with conn:
+        row = conn.execute("""
+            SELECT id, email FROM otp_codes
+            WHERE purpose = 'RESET_TOKEN' AND code_hash = ? AND used_at IS NULL AND expires_at > ?
+            ORDER BY id DESC LIMIT 1
+        """, (data.reset_token.strip(), now_str)).fetchone()
+
+        if not row:
+            raise HTTPException(status_code=400, detail="Phiên đặt lại mã PIN không hợp lệ hoặc đã hết hạn.")
+
+        user = conn.execute("SELECT id FROM users WHERE email = ?", (row["email"],)).fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="Không tìm thấy người dùng.")
+
+        conn.execute("UPDATE users SET pin_hash = ?, must_change_pin = 0, updated_at = ? WHERE id = ?", (new_pin_h, now_str, user["id"]))
+        conn.execute("UPDATE otp_codes SET used_at = ? WHERE id = ?", (now_str, row["id"]))
+        conn.execute("DELETE FROM sessions WHERE user_id = ?", (user["id"],))
+
+    return {"message": "Đặt lại mã PIN thành công! Vui lòng đăng nhập bằng mã PIN mới."}
 
 @app.post("/api/auth/login")
 def login(data: LoginReq, response: Response, conn: sqlite3.Connection = Depends(get_db)):
