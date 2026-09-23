@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Team Fund & Bill Split</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
@@ -10,10 +10,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
     [v-cloak] { display: none; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .safe-pb { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)); }
+    .safe-nav-pb { padding-bottom: calc(0.6rem + env(safe-area-inset-bottom, 0px)); }
   </style>
   <script>
     tailwind.config = {
@@ -33,44 +39,47 @@
     }
   </script>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen antialiased flex flex-col selection:bg-indigo-500 selection:text-white pb-20 md:pb-6">
+<body class="bg-slate-50 text-slate-900 min-h-screen antialiased flex flex-col selection:bg-indigo-500 selection:text-white safe-pb md:pb-8">
   <div id="app" v-cloak class="flex flex-col min-h-screen">
 
     <!-- TOP HEADER -->
-    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 px-4 py-3 shadow-sm">
+    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 py-2.5 shadow-sm">
       <div class="max-w-6xl mx-auto flex items-center justify-between">
-        <div class="flex items-center space-x-3 cursor-pointer" @click="currentTab = 'dashboard'">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-200 font-bold text-lg">
+        <div class="flex items-center space-x-2.5 cursor-pointer active:scale-95 transition" @click="currentTab = 'dashboard'">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-200 font-bold text-base">
             💸
           </div>
           <div>
-            <h1 class="text-base font-bold text-slate-900 leading-tight">Team Fund & Bill</h1>
-            <p class="text-xs text-slate-500 font-medium hidden sm:block">Quản lý Quỹ & Chia tiền nội bộ</p>
+            <h1 class="text-sm sm:text-base font-extrabold text-slate-900 leading-tight">Team Fund & Bill</h1>
+            <p class="text-[11px] text-slate-500 font-medium hidden sm:block">Quản lý Quỹ & Chia tiền nội bộ</p>
           </div>
         </div>
 
-        <div v-if="currentUser" class="flex items-center space-x-3">
+        <div v-if="currentUser" class="flex items-center space-x-2">
           <!-- Notification Bell -->
-          <button @click="currentTab = 'notifications'" class="relative p-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button @click="currentTab = 'notifications'"
+            class="relative p-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition active:scale-90">
+            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
-            <span v-if="unreadCount > 0" class="absolute top-1.5 right-1.5 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
+            <span v-if="unreadCount > 0" class="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[10px] font-extrabold rounded-full flex items-center justify-center animate-pulse">
               {{ unreadCount > 9 ? '9+' : unreadCount }}
             </span>
           </button>
 
           <!-- User Chip / Profile -->
-          <div @click="currentTab = 'profile'" class="flex items-center space-x-2 pl-2 pr-3 py-1 bg-slate-100 hover:bg-slate-200/80 rounded-full cursor-pointer transition">
+          <div @click="currentTab = 'profile'"
+            class="flex items-center space-x-1.5 p-1 sm:pl-2 sm:pr-3 sm:py-1 bg-slate-100 hover:bg-slate-200/80 rounded-full cursor-pointer transition active:scale-95">
             <div class="w-7 h-7 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center overflow-hidden">
               <img v-if="currentUser.avatar_url" :src="currentUser.avatar_url" class="w-full h-full object-cover" />
               <span v-else>{{ initials(currentUser.display_name) }}</span>
             </div>
-            <span class="text-xs font-semibold text-slate-700 hidden sm:inline max-w-[120px] truncate">{{ currentUser.display_name }}</span>
+            <span class="text-xs font-semibold text-slate-700 hidden sm:inline max-w-[110px] truncate">{{ currentUser.display_name }}</span>
           </div>
 
           <!-- Logout -->
-          <button @click="logout" title="Đăng xuất" class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition">
+          <button @click="logout" title="Đăng xuất"
+            class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition active:scale-90">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
@@ -93,17 +102,17 @@
     </header>
 
     <!-- MAIN BODY -->
-    <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
+    <main class="flex-1 max-w-6xl w-full mx-auto px-3.5 sm:px-4 py-4 sm:py-6">
 
-      <!-- ================== AUTH VIEW (When not logged in) ================== -->
-      <div v-if="!currentUser" class="max-w-md mx-auto my-8">
+      <!-- ================== AUTH VIEW ================== -->
+      <div v-if="!currentUser" class="max-w-md mx-auto my-6 sm:my-10">
         <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
           <div class="text-center mb-6">
-            <div class="w-16 h-16 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-3xl mx-auto mb-3 shadow-lg shadow-indigo-300">
+            <div class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-2xl mx-auto mb-3 shadow-lg shadow-indigo-300">
               ⚡
             </div>
             <h2 class="text-2xl font-black text-slate-800 tracking-tight">Team Fund & Bill</h2>
-            <p class="text-sm text-slate-500 mt-1">Đăng nhập bằng Email & Mã PIN 4 số</p>
+            <p class="text-xs text-slate-500 mt-1">Đăng nhập bằng Email & Mã PIN 4 số</p>
           </div>
 
           <!-- Step 1: Input Email -->
@@ -111,10 +120,10 @@
             <div>
               <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Email cơ quan / cá nhân</label>
               <input v-model="authEmail" type="email" required placeholder="nhanvien@vib.com"
-                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-slate-800 font-medium transition" />
+                class="w-full px-4 py-3 text-base rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-slate-800 font-medium transition" />
             </div>
             <button :disabled="authLoading" type="submit"
-              class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition active:scale-[0.98] disabled:opacity-50">
+              class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition active:scale-[0.98] disabled:opacity-50 text-sm">
               {{ authLoading ? 'Đang kiểm tra...' : 'Tiếp tục' }}
             </button>
           </form>
@@ -123,20 +132,20 @@
           <form v-if="authStep === 'login'" @submit.prevent="handleLogin" class="space-y-4">
             <div class="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 flex items-center justify-between">
               <div>
-                <p class="text-xs text-slate-500">Đăng nhập tài khoản</p>
-                <p class="text-sm font-bold text-indigo-900">{{ authEmail }}</p>
+                <p class="text-[11px] text-slate-500">Đăng nhập tài khoản</p>
+                <p class="text-xs sm:text-sm font-bold text-indigo-900 truncate max-w-[200px]">{{ authEmail }}</p>
               </div>
               <button type="button" @click="authStep = 'email'" class="text-xs text-indigo-600 font-semibold hover:underline">Đổi email</button>
             </div>
 
             <div>
               <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Mã PIN (4 chữ số)</label>
-              <input v-model="authPin" type="password" maxlength="4" pattern="[0-9]{4}" required placeholder="••••"
-                class="w-full px-4 py-3 text-center text-2xl tracking-[0.6em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-slate-800 transition" />
+              <input v-model="authPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="••••"
+                class="w-full px-4 py-3 text-center text-3xl tracking-[0.5em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-slate-800 transition" />
             </div>
 
             <button :disabled="authLoading" type="submit"
-              class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition active:scale-[0.98] disabled:opacity-50">
+              class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition active:scale-[0.98] disabled:opacity-50 text-sm">
               {{ authLoading ? 'Đang đăng nhập...' : 'Đăng nhập' }}
             </button>
 
@@ -152,38 +161,38 @@
             <div class="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-xs text-slate-500">{{ authPurpose === 'REGISTER' ? 'Đăng ký thành viên mới' : 'Đặt lại mã PIN' }}</p>
-                  <p class="text-sm font-bold text-indigo-900">{{ authEmail }}</p>
+                  <p class="text-[11px] text-slate-500">{{ authPurpose === 'REGISTER' ? 'Đăng ký thành viên mới' : 'Đặt lại mã PIN' }}</p>
+                  <p class="text-xs sm:text-sm font-bold text-indigo-900 truncate max-w-[200px]">{{ authEmail }}</p>
                 </div>
                 <button type="button" @click="authStep = 'email'" class="text-xs text-indigo-600 font-semibold hover:underline">Đổi</button>
               </div>
               <div v-if="devOtpCode" class="mt-2 text-xs bg-emerald-100/80 text-emerald-800 p-2 rounded-lg font-mono">
                 ⚡ Mã OTP: <b class="text-sm">{{ devOtpCode }}</b>
-                <button type="button" @click="authOtp = devOtpCode" class="ml-2 underline text-emerald-900">Điền nhanh</button>
+                <button type="button" @click="authOtp = devOtpCode" class="ml-2 underline text-emerald-900 font-bold">Điền nhanh</button>
               </div>
             </div>
 
             <div v-if="authPurpose === 'REGISTER'">
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Tên hiển thị của bạn</label>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Tên hiển thị của bạn</label>
               <input v-model="authDisplayName" type="text" required placeholder="Hải Thành, Minh Nguyễn..."
-                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-slate-800 font-medium transition" />
+                class="w-full px-4 py-2.5 text-base rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-slate-800 font-medium transition" />
             </div>
 
             <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Mã OTP từ Email</label>
-              <input v-model="authOtp" type="text" maxlength="6" required placeholder="123456"
-                class="w-full px-4 py-2.5 text-center text-xl tracking-[0.4em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-slate-800 transition" />
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Mã OTP từ Email</label>
+              <input v-model="authOtp" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" required placeholder="123456"
+                class="w-full px-4 py-2.5 text-center text-2xl tracking-[0.3em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-slate-800 transition" />
             </div>
 
             <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Tạo mã PIN 4 số</label>
-              <input v-model="authPin" type="password" maxlength="4" pattern="[0-9]{4}" required placeholder="••••"
-                class="w-full px-4 py-2.5 text-center text-2xl tracking-[0.6em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-slate-800 transition" />
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Tạo mã PIN 4 số</label>
+              <input v-model="authPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="••••"
+                class="w-full px-4 py-2.5 text-center text-3xl tracking-[0.5em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-slate-800 transition" />
               <p class="text-[11px] text-slate-400 mt-1">Dùng để đăng nhập nhanh sau này.</p>
             </div>
 
             <button :disabled="authLoading" type="submit"
-              class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition active:scale-[0.98] disabled:opacity-50">
+              class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition active:scale-[0.98] disabled:opacity-50 text-sm">
               {{ authLoading ? 'Đang xử lý...' : (authPurpose === 'REGISTER' ? 'Hoàn tất & Bắt đầu' : 'Cập nhật PIN mới') }}
             </button>
           </form>
@@ -199,36 +208,36 @@
       <div v-else>
 
         <!-- 1. DASHBOARD VIEW -->
-        <div v-if="currentTab === 'dashboard'" class="space-y-6">
+        <div v-if="currentTab === 'dashboard'" class="space-y-4 sm:space-y-6">
 
           <!-- STATS CARDS -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <!-- Fund Balance -->
-            <div class="bg-gradient-to-br from-indigo-900 to-indigo-700 p-5 rounded-2xl text-white shadow-lg shadow-indigo-200/50 flex flex-col justify-between">
+            <div class="bg-gradient-to-br from-indigo-900 via-indigo-800 to-indigo-700 p-4 sm:p-5 rounded-2xl text-white shadow-lg shadow-indigo-200/50 flex flex-col justify-between">
               <div class="flex items-center justify-between">
-                <span class="text-xs font-bold tracking-wider uppercase text-indigo-200">Số dư Quỹ nhóm</span>
+                <span class="text-[11px] font-bold tracking-wider uppercase text-indigo-200">Số dư Quỹ nhóm</span>
                 <span class="text-xl">💰</span>
               </div>
-              <div class="my-3">
+              <div class="my-2.5">
                 <div class="text-2xl sm:text-3xl font-extrabold tracking-tight">
                   {{ formatVND(dashboardData.fund_balance) }}
                 </div>
               </div>
               <div class="flex items-center justify-between pt-2 border-t border-indigo-500/30 text-xs">
-                <span class="text-indigo-200">Ledger nội bộ</span>
-                <button @click="openContributionModal" class="px-2.5 py-1 bg-white/20 hover:bg-white/30 rounded-lg font-bold transition">
+                <span class="text-indigo-200">Ledger quỹ chung</span>
+                <button @click="openContributionModal" class="px-2.5 py-1 bg-white/20 hover:bg-white/30 rounded-lg font-bold transition active:scale-95">
                   + Đóng quỹ
                 </button>
               </div>
             </div>
 
             <!-- I Owe -->
-            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
               <div class="flex items-center justify-between">
-                <span class="text-xs font-bold tracking-wider uppercase text-slate-500">Tôi đang nợ</span>
+                <span class="text-[11px] font-bold tracking-wider uppercase text-slate-500">Tôi đang nợ</span>
                 <span class="text-xl">💳</span>
               </div>
-              <div class="my-3">
+              <div class="my-2.5">
                 <div class="text-2xl sm:text-3xl font-extrabold text-rose-600 tracking-tight">
                   {{ formatVND(dashboardData.total_i_owe) }}
                 </div>
@@ -242,12 +251,12 @@
             </div>
 
             <!-- Others Owe Me -->
-            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
               <div class="flex items-center justify-between">
-                <span class="text-xs font-bold tracking-wider uppercase text-slate-500">Người khác nợ tôi</span>
+                <span class="text-[11px] font-bold tracking-wider uppercase text-slate-500">Người khác nợ tôi</span>
                 <span class="text-xl">📥</span>
               </div>
-              <div class="my-3">
+              <div class="my-2.5">
                 <div class="text-2xl sm:text-3xl font-extrabold text-emerald-600 tracking-tight">
                   {{ formatVND(dashboardData.total_others_owe) }}
                 </div>
@@ -261,52 +270,52 @@
             </div>
           </div>
 
-          <!-- QUICK ACTIONS BANNER -->
-          <div class="flex flex-wrap gap-3">
+          <!-- QUICK ACTIONS -->
+          <div class="grid grid-cols-2 gap-2.5 sm:gap-3">
             <button @click="openCreateBillModal"
-              class="flex-1 min-w-[160px] py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-100 transition flex items-center justify-center space-x-2">
-              <span class="text-lg">🧾</span>
-              <span>+ Tạo Hoá Đơn Mới</span>
+              class="py-3 px-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold shadow-md shadow-indigo-100 transition flex items-center justify-center space-x-2 active:scale-95 text-xs sm:text-sm">
+              <span class="text-base sm:text-lg">🧾</span>
+              <span>+ Tạo Hoá Đơn</span>
             </button>
             <button @click="openContributionModal"
-              class="flex-1 min-w-[160px] py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md shadow-emerald-100 transition flex items-center justify-center space-x-2">
-              <span class="text-lg">💵</span>
-              <span>+ Tự Ghi Nhận Đóng Quỹ</span>
+              class="py-3 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold shadow-md shadow-emerald-100 transition flex items-center justify-center space-x-2 active:scale-95 text-xs sm:text-sm">
+              <span class="text-base sm:text-lg">💵</span>
+              <span>+ Đóng Quỹ</span>
             </button>
           </div>
 
           <!-- RECENT BILLS & FUND ACTIVITY -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
 
             <!-- Recent Bills -->
-            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-              <div class="flex items-center justify-between mb-4">
-                <h3 class="font-bold text-slate-800 text-base flex items-center space-x-2">
+            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold text-slate-800 text-sm sm:text-base flex items-center space-x-2">
                   <span>🧾</span>
                   <span>Hoá đơn gần đây</span>
                 </h3>
                 <button @click="currentTab = 'bills'" class="text-xs font-bold text-indigo-600 hover:underline">Xem tất cả</button>
               </div>
 
-              <div v-if="dashboardData.recent_bills.length === 0" class="text-center py-8 text-slate-400 text-sm">
+              <div v-if="dashboardData.recent_bills.length === 0" class="text-center py-6 text-slate-400 text-xs sm:text-sm">
                 Chưa có hoá đơn nào phát sinh
               </div>
-              <div v-else class="space-y-3">
+              <div v-else class="space-y-2.5">
                 <div v-for="b in dashboardData.recent_bills" :key="b.id"
-                  @click="openBillDetail(b.id)"
-                  class="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl cursor-pointer transition flex items-center justify-between border border-slate-100">
-                  <div class="flex items-center space-x-3">
-                    <div class="w-9 h-9 rounded-lg bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center text-sm">
+                  @click="currentTab = 'bills'"
+                  class="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl cursor-pointer transition flex items-center justify-between border border-slate-100 active:scale-[0.99]">
+                  <div class="flex items-center space-x-2.5 min-w-0 pr-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center text-sm shrink-0">
                       {{ categoryEmoji(b.category) }}
                     </div>
-                    <div>
-                      <h4 class="text-sm font-bold text-slate-800 line-clamp-1">{{ b.title }}</h4>
-                      <p class="text-xs text-slate-500">{{ b.expense_date }} • Chi bởi: {{ b.payer_name }}</p>
+                    <div class="min-w-0">
+                      <h4 class="text-xs sm:text-sm font-bold text-slate-800 truncate">{{ b.title }}</h4>
+                      <p class="text-[11px] text-slate-500 truncate">{{ b.expense_date }} • Chi: {{ b.payer_name }}</p>
                     </div>
                   </div>
-                  <div class="text-right">
-                    <p class="text-sm font-extrabold text-slate-900">{{ formatVND(b.total_amount) }}</p>
-                    <span :class="['inline-block text-[10px] font-bold px-2 py-0.5 rounded-full',
+                  <div class="text-right shrink-0">
+                    <p class="text-xs sm:text-sm font-extrabold text-slate-900">{{ formatVND(b.total_amount) }}</p>
+                    <span :class="['inline-block text-[9px] font-bold px-1.5 py-0.2 rounded-full',
                                   b.source_type === 'PERSONAL' ? 'bg-amber-100 text-amber-800' : 'bg-violet-100 text-violet-800']">
                       {{ b.source_type === 'PERSONAL' ? 'Cá nhân' : 'Quỹ nhóm' }}
                     </span>
@@ -316,33 +325,33 @@
             </div>
 
             <!-- Recent Fund Transactions -->
-            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-              <div class="flex items-center justify-between mb-4">
-                <h3 class="font-bold text-slate-800 text-base flex items-center space-x-2">
+            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="font-bold text-slate-800 text-sm sm:text-base flex items-center space-x-2">
                   <span>💰</span>
                   <span>Biến động quỹ gần đây</span>
                 </h3>
                 <button @click="currentTab = 'fund'" class="text-xs font-bold text-indigo-600 hover:underline">Xem tất cả</button>
               </div>
 
-              <div v-if="dashboardData.recent_fund_transactions.length === 0" class="text-center py-8 text-slate-400 text-sm">
+              <div v-if="dashboardData.recent_fund_transactions.length === 0" class="text-center py-6 text-slate-400 text-xs sm:text-sm">
                 Chưa có giao dịch quỹ nào
               </div>
-              <div v-else class="space-y-3">
+              <div v-else class="space-y-2.5">
                 <div v-for="tx in dashboardData.recent_fund_transactions" :key="tx.id"
                   class="p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100">
-                  <div class="flex items-center space-x-3">
-                    <div :class="['w-9 h-9 rounded-lg font-bold flex items-center justify-center text-sm',
+                  <div class="flex items-center space-x-2.5 min-w-0 pr-2">
+                    <div :class="['w-8 h-8 rounded-lg font-bold flex items-center justify-center text-xs shrink-0',
                                  tx.type === 'CONTRIBUTION' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700']">
                       {{ tx.type === 'CONTRIBUTION' ? '➕' : '➖' }}
                     </div>
-                    <div>
-                      <h4 class="text-sm font-bold text-slate-800 line-clamp-1">{{ tx.note || (tx.type === 'CONTRIBUTION' ? 'Đóng quỹ' : 'Chi quỹ') }}</h4>
-                      <p class="text-xs text-slate-500">{{ tx.transaction_date }} • {{ tx.member_name || 'Hệ thống' }}</p>
+                    <div class="min-w-0">
+                      <h4 class="text-xs sm:text-sm font-bold text-slate-800 truncate">{{ tx.note || (tx.type === 'CONTRIBUTION' ? 'Đóng quỹ' : 'Chi quỹ') }}</h4>
+                      <p class="text-[11px] text-slate-500 truncate">{{ tx.transaction_date }} • {{ tx.member_name || 'Hệ thống' }}</p>
                     </div>
                   </div>
-                  <div class="text-right">
-                    <p :class="['text-sm font-extrabold', tx.type === 'CONTRIBUTION' ? 'text-emerald-600' : 'text-rose-600']">
+                  <div class="text-right shrink-0">
+                    <p :class="['text-xs sm:text-sm font-extrabold', tx.type === 'CONTRIBUTION' ? 'text-emerald-600' : 'text-rose-600']">
                       {{ tx.type === 'CONTRIBUTION' ? '+' : '-' }}{{ formatVND(tx.amount) }}
                     </p>
                   </div>
@@ -354,96 +363,104 @@
 
         </div>
 
-        <!-- 2. BILLS VIEW -->
-        <div v-if="currentTab === 'bills'" class="space-y-5">
+        <!-- 2. BILLS VIEW (Compact List UX with Accordion Details) -->
+        <div v-if="currentTab === 'bills'" class="space-y-3.5">
           <!-- Filters & Header -->
-          <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div class="flex flex-wrap items-center gap-2 flex-1">
-              <!-- Search -->
-              <div class="relative flex-1 min-w-[200px]">
-                <input v-model="billFilter.search" @input="loadBills" type="text" placeholder="Tìm tên bill hoặc ghi chú..."
-                  class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:border-indigo-500 outline-none" />
-                <span class="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
-              </div>
-              <!-- Category Filter -->
-              <select v-model="billFilter.category" @change="loadBills" class="py-2 px-3 text-xs rounded-xl border border-slate-200 bg-white font-medium outline-none">
+          <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm space-y-2.5">
+            <div class="relative">
+              <input v-model="billFilter.search" @input="loadBills" type="text" placeholder="Tìm kiếm hoá đơn..."
+                class="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 focus:border-indigo-500 outline-none" />
+              <span class="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <select v-model="billFilter.category" @change="loadBills" class="flex-1 py-2 px-2 text-xs rounded-xl border border-slate-200 bg-white font-medium outline-none">
                 <option value="">Tất cả danh mục</option>
                 <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
               </select>
-              <!-- Source Filter -->
-              <select v-model="billFilter.source_type" @change="loadBills" class="py-2 px-3 text-xs rounded-xl border border-slate-200 bg-white font-medium outline-none">
-                <option value="">Tất cả nguồn tiền</option>
+              <select v-model="billFilter.source_type" @change="loadBills" class="flex-1 py-2 px-2 text-xs rounded-xl border border-slate-200 bg-white font-medium outline-none">
+                <option value="">Tất cả nguồn</option>
                 <option value="PERSONAL">Tiền cá nhân</option>
                 <option value="GROUP_FUND">Quỹ nhóm</option>
               </select>
+              <button @click="openCreateBillModal" class="py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow transition shrink-0 active:scale-95">
+                + Tạo Bill
+              </button>
             </div>
-
-            <button @click="openCreateBillModal" class="py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow transition flex items-center justify-center space-x-1">
-              <span>+</span>
-              <span>Tạo Hoá Đơn</span>
-            </button>
           </div>
 
           <!-- Bills List -->
-          <div v-if="billsLoading" class="text-center py-12 text-slate-400 text-sm">Đang tải danh sách...</div>
-          <div v-else-if="bills.length === 0" class="bg-white rounded-2xl p-12 text-center border border-slate-200 text-slate-400">
-            <span class="text-4xl block mb-2">🧾</span>
+          <div v-if="billsLoading" class="text-center py-10 text-slate-400 text-xs">Đang tải danh sách...</div>
+          <div v-else-if="bills.length === 0" class="bg-white rounded-2xl p-8 text-center border border-slate-200 text-slate-400 text-xs">
+            <span class="text-3xl block mb-2">🧾</span>
             Không tìm thấy hoá đơn nào.
           </div>
-          <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div v-for="b in bills" :key="b.id" class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex flex-col justify-between hover:shadow-md transition">
-              <div>
-                <div class="flex items-start justify-between gap-2 mb-2">
-                  <div class="flex items-center space-x-2">
-                    <span class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm font-bold">
-                      {{ categoryEmoji(b.category) }}
-                    </span>
-                    <div>
-                      <h3 class="font-bold text-slate-800 text-sm line-clamp-1">{{ b.title }}</h3>
-                      <p class="text-[11px] text-slate-500">{{ b.expense_date }} • Chi bởi: <b>{{ b.payer_name }}</b></p>
-                    </div>
-                  </div>
-                  <div class="text-right">
-                    <span class="text-base font-extrabold text-slate-900 block">{{ formatVND(b.total_amount) }}</span>
-                    <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full',
-                                  b.source_type === 'PERSONAL' ? 'bg-amber-100 text-amber-800' : 'bg-violet-100 text-violet-800']">
-                      {{ b.source_type === 'PERSONAL' ? 'Cá nhân chi' : 'Quỹ nhóm chi' }}
-                    </span>
+          <div v-else class="space-y-3">
+            <div v-for="b in bills" :key="b.id" class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-3.5 sm:p-4 hover:shadow-md transition">
+              <!-- Top Row -->
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center space-x-2.5 min-w-0">
+                  <span class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm font-bold shrink-0">
+                    {{ categoryEmoji(b.category) }}
+                  </span>
+                  <div class="min-w-0">
+                    <h3 class="font-bold text-slate-800 text-sm truncate">{{ b.title }}</h3>
+                    <p class="text-[11px] text-slate-500 truncate">{{ b.expense_date }} • Chi: <b>{{ b.payer_name }}</b></p>
                   </div>
                 </div>
+                <div class="text-right shrink-0">
+                  <span class="text-sm sm:text-base font-extrabold text-slate-900 block">{{ formatVND(b.total_amount) }}</span>
+                  <span :class="['text-[9px] font-bold px-1.5 py-0.2 rounded-full',
+                                b.source_type === 'PERSONAL' ? 'bg-amber-100 text-amber-800' : 'bg-violet-100 text-violet-800']">
+                    {{ b.source_type === 'PERSONAL' ? 'Cá nhân chi' : 'Quỹ nhóm chi' }}
+                  </span>
+                </div>
+              </div>
 
-                <p v-if="b.description" class="text-xs text-slate-600 mb-3 bg-slate-50 p-2 rounded-lg italic">
-                  "{{ b.description }}"
-                </p>
+              <!-- Note if present -->
+              <p v-if="b.description" class="text-xs text-slate-600 mt-2 bg-slate-50 p-2 rounded-lg italic">
+                "{{ b.description }}"
+              </p>
 
-                <!-- Participants chips -->
-                <div class="mt-3 pt-3 border-t border-slate-100">
-                  <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                    Thành viên ({{ b.participants.length }} người)
-                  </p>
-                  <div class="flex flex-wrap gap-1.5">
-                    <div v-for="p in b.participants" :key="p.id"
-                      class="px-2 py-1 bg-slate-100 rounded-lg text-xs flex items-center space-x-1.5">
-                      <span class="font-semibold text-slate-700">{{ p.display_name }}</span>
-                      <span v-if="b.source_type === 'PERSONAL'" class="font-mono text-[11px] text-slate-500">
-                        ({{ formatVND(p.share_amount) }})
-                      </span>
-                      <span v-if="b.source_type === 'PERSONAL'"
-                        :class="['text-[9px] font-bold px-1.5 py-0.2 rounded',
-                                p.payment_status === 'PAID' ? 'bg-emerald-100 text-emerald-800' :
-                                p.payment_status === 'PAYMENT_REPORTED' ? 'bg-blue-100 text-blue-800' :
-                                'bg-slate-200 text-slate-600']">
-                        {{ p.payment_status === 'PAID' ? '✓ Đã trả' :
-                           p.payment_status === 'PAYMENT_REPORTED' ? '⏳ Đã báo' : 'Chưa' }}
-                      </span>
-                    </div>
+              <!-- Compact Participant Summary & Accordion Toggle -->
+              <div class="mt-2.5 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                <span class="text-slate-500 text-[11px]">
+                  👥 {{ b.participants.length }} người tham gia
+                  <span v-if="b.source_type === 'PERSONAL'" class="text-slate-400">
+                    • {{ b.participants.filter(p => p.payment_status === 'UNPAID').length }} chưa trả
+                  </span>
+                </span>
+                <button @click="toggleBillExpand(b.id)" class="text-indigo-600 font-bold text-[11px] hover:underline flex items-center space-x-0.5">
+                  <span>{{ expandedBillIds.includes(b.id) ? 'Thu gọn' : 'Chi tiết chia' }}</span>
+                  <span>{{ expandedBillIds.includes(b.id) ? '▲' : '▼' }}</span>
+                </button>
+              </div>
+
+              <!-- Expanded Participants Breakdown -->
+              <div v-if="expandedBillIds.includes(b.id)" class="mt-2 pt-2 border-t border-dashed border-slate-200 space-y-1.5">
+                <div v-for="p in b.participants" :key="p.id"
+                  class="flex items-center justify-between p-1.5 bg-slate-50 rounded-lg text-xs">
+                  <span class="font-medium text-slate-700">{{ p.display_name }}</span>
+                  <div class="flex items-center space-x-2">
+                    <span v-if="b.source_type === 'PERSONAL'" class="font-mono font-semibold text-slate-600">
+                      {{ formatVND(p.share_amount) }}
+                    </span>
+                    <span v-if="b.source_type === 'PERSONAL'"
+                      :class="['text-[9px] font-bold px-1.5 py-0.5 rounded',
+                              p.payment_status === 'PAID' ? 'bg-emerald-100 text-emerald-800' :
+                              p.payment_status === 'PAYMENT_REPORTED' ? 'bg-blue-100 text-blue-800' :
+                              'bg-slate-200 text-slate-600']">
+                      {{ p.payment_status === 'PAID' ? '✓ Đã trả' :
+                         p.payment_status === 'PAYMENT_REPORTED' ? '⏳ Đã báo' : 'Chưa trả' }}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <!-- Footer Actions -->
-              <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                <div class="flex items-center space-x-2">
+              <!-- Action Footer -->
+              <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                <!-- Creator Controls -->
+                <div class="flex items-center space-x-3">
                   <button v-if="b.created_by === currentUser.id" @click="openEditBillModal(b)"
                     class="text-indigo-600 font-semibold hover:underline">
                     Sửa
@@ -455,146 +472,140 @@
                 </div>
 
                 <!-- Debtor Action -->
-                <div v-if="b.source_type === 'PERSONAL'" class="flex items-center space-x-2">
+                <div v-if="b.source_type === 'PERSONAL'" class="flex items-center space-x-1.5">
                   <template v-for="p in b.participants">
-                    <div v-if="p.user_id === currentUser.id && p.payment_status === 'UNPAID' && b.payer_user_id !== currentUser.id" :key="p.id">
-                      <button @click="showVietQR(b)" class="px-2.5 py-1 bg-violet-50 text-violet-700 hover:bg-violet-100 font-bold rounded-lg mr-1 transition">
+                    <div v-if="p.user_id === currentUser.id && p.payment_status === 'UNPAID' && b.payer_user_id !== currentUser.id" :key="p.id"
+                      class="flex items-center space-x-1.5">
+                      <button @click="showVietQR(b)" class="px-2.5 py-1.5 bg-violet-50 text-violet-700 hover:bg-violet-100 font-bold rounded-xl text-xs active:scale-95 transition">
                         QR Chuyển
                       </button>
-                      <button @click="reportPayment(b.id)" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition">
+                      <button @click="reportPayment(b.id)" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow active:scale-95 transition">
                         Tôi đã trả
                       </button>
                     </div>
                     <div v-else-if="p.user_id === currentUser.id && p.payment_status === 'PAYMENT_REPORTED'" :key="'rep_'+p.id">
-                      <span class="text-blue-600 font-bold">⏳ Đang chờ xác nhận</span>
+                      <span class="text-blue-600 font-bold text-xs">⏳ Chờ xác nhận</span>
                     </div>
                   </template>
 
-                  <!-- Payer Confirmation Action -->
+                  <!-- Payer Confirmation shortcut -->
                   <div v-if="b.payer_user_id === currentUser.id">
-                    <button @click="currentTab = 'debts'; debtSubTab = 'others_owe'" class="text-indigo-600 font-bold hover:underline">
+                    <button @click="currentTab = 'debts'; debtSubTab = 'others_owe'" class="text-indigo-600 font-bold hover:underline text-xs">
                       Kiểm tra nợ →
                     </button>
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
         </div>
 
         <!-- 3. GROUP FUND VIEW -->
-        <div v-if="currentTab === 'fund'" class="space-y-6">
+        <div v-if="currentTab === 'fund'" class="space-y-4 sm:space-y-6">
           <!-- Balance & Actions -->
-          <div class="bg-gradient-to-r from-slate-900 to-indigo-950 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div class="bg-gradient-to-r from-slate-900 to-indigo-950 rounded-3xl p-5 sm:p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <p class="text-xs uppercase tracking-wider text-indigo-300 font-bold">Quỹ Nhóm Hiện Tại</p>
-              <h2 class="text-3xl sm:text-4xl font-black mt-1">{{ formatVND(fundSummary.balance) }}</h2>
-              <p class="text-xs text-slate-400 mt-2">
-                Công thức: Tổng đóng quỹ - Tổng hoá đơn chi từ quỹ
+              <p class="text-[11px] uppercase tracking-wider text-indigo-300 font-bold">Quỹ Nhóm Hiện Tại</p>
+              <h2 class="text-2xl sm:text-4xl font-black mt-1">{{ formatVND(fundSummary.balance) }}</h2>
+              <p class="text-[11px] text-slate-400 mt-1">
+                Công thức: Tổng đóng quỹ - Tổng chi hoá đơn quỹ
               </p>
             </div>
-            <div class="flex items-center space-x-4">
-              <div class="px-4 py-3 bg-white/10 rounded-2xl text-center">
-                <span class="text-[11px] text-emerald-400 font-bold block">TỔNG THU</span>
-                <span class="text-lg font-extrabold text-white">{{ formatVND(fundSummary.total_in) }}</span>
+            <div class="flex items-center space-x-3">
+              <div class="flex-1 px-3 py-2 bg-white/10 rounded-xl text-center">
+                <span class="text-[10px] text-emerald-400 font-bold block">TỔNG THU</span>
+                <span class="text-sm sm:text-base font-extrabold text-white">{{ formatVND(fundSummary.total_in) }}</span>
               </div>
-              <div class="px-4 py-3 bg-white/10 rounded-2xl text-center">
-                <span class="text-[11px] text-rose-400 font-bold block">TỔNG CHI</span>
-                <span class="text-lg font-extrabold text-white">{{ formatVND(fundSummary.total_out) }}</span>
+              <div class="flex-1 px-3 py-2 bg-white/10 rounded-xl text-center">
+                <span class="text-[10px] text-rose-400 font-bold block">TỔNG CHI</span>
+                <span class="text-sm sm:text-base font-extrabold text-white">{{ formatVND(fundSummary.total_out) }}</span>
               </div>
-              <button @click="openContributionModal" class="py-3 px-5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-2xl shadow-lg transition">
+              <button @click="openContributionModal" class="py-2.5 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-lg transition active:scale-95 shrink-0 text-xs sm:text-sm">
                 + Đóng Quỹ
               </button>
             </div>
           </div>
 
           <!-- Members Contributions Leaderboard -->
-          <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
-            <h3 class="font-bold text-slate-800 text-sm uppercase tracking-wider mb-4 flex items-center space-x-2">
+          <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm">
+            <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider mb-3 flex items-center space-x-2">
               <span>🏆</span>
-              <span>Tổng kết đóng góp theo thành viên</span>
+              <span>Đóng góp theo thành viên</span>
             </h3>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               <div v-for="m in fundSummary.members" :key="m.id"
-                class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">
+                class="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center space-x-2.5">
+                <div class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
                   <img v-if="m.avatar_url" :src="m.avatar_url" class="w-full h-full rounded-full object-cover" />
                   <span v-else>{{ initials(m.display_name) }}</span>
                 </div>
-                <div>
+                <div class="min-w-0">
                   <h4 class="text-xs font-bold text-slate-800 truncate">{{ m.display_name }}</h4>
-                  <p class="text-xs font-extrabold text-emerald-600">{{ formatVND(m.total_contributed) }}</p>
+                  <p class="text-xs font-extrabold text-emerald-600 truncate">{{ formatVND(m.total_contributed) }}</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Full Fund Ledger -->
-          <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="font-bold text-slate-800 text-base flex items-center space-x-2">
+          <!-- Transactions List (Responsive Cards on Mobile) -->
+          <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-bold text-slate-800 text-sm sm:text-base flex items-center space-x-2">
                 <span>📑</span>
                 <span>Lịch sử giao dịch quỹ</span>
               </h3>
-              <select v-model="fundTxFilter" class="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none font-medium">
-                <option value="">Tất cả giao dịch</option>
-                <option value="CONTRIBUTION">Tiền vào (Đóng quỹ)</option>
-                <option value="EXPENSE">Tiền ra (Chi tiêu)</option>
+              <select v-model="fundTxFilter" class="text-xs border border-slate-200 rounded-lg px-2 py-1 outline-none font-medium">
+                <option value="">Tất cả</option>
+                <option value="CONTRIBUTION">Tiền vào</option>
+                <option value="EXPENSE">Tiền ra</option>
               </select>
             </div>
 
-            <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs">
-                <thead>
-                  <tr class="border-b border-slate-100 text-slate-400 uppercase font-bold text-[10px]">
-                    <th class="py-2.5 px-3">Ngày</th>
-                    <th class="py-2.5 px-3">Loại</th>
-                    <th class="py-2.5 px-3">Thành viên / Nguồn</th>
-                    <th class="py-2.5 px-3">Nội dung</th>
-                    <th class="py-2.5 px-3 text-right">Số tiền</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <tr v-for="tx in filteredFundTransactions" :key="tx.id" class="hover:bg-slate-50/80">
-                    <td class="py-3 px-3 text-slate-500 whitespace-nowrap">{{ tx.transaction_date }}</td>
-                    <td class="py-3 px-3 whitespace-nowrap">
-                      <span :class="['px-2 py-0.5 rounded-md font-bold text-[10px]',
-                                    tx.type === 'CONTRIBUTION' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800']">
-                        {{ tx.type === 'CONTRIBUTION' ? 'TIỀN VÀO' : 'TIỀN RA' }}
-                      </span>
-                    </td>
-                    <td class="py-3 px-3 font-semibold text-slate-800 whitespace-nowrap">{{ tx.member_name || 'Quỹ nhóm' }}</td>
-                    <td class="py-3 px-3 text-slate-600">{{ tx.note || (tx.bill_title ? 'Chi cho: ' + tx.bill_title : '-') }}</td>
-                    <td class="py-3 px-3 text-right font-extrabold whitespace-nowrap"
-                        :class="tx.type === 'CONTRIBUTION' ? 'text-emerald-600' : 'text-rose-600'">
-                      {{ tx.type === 'CONTRIBUTION' ? '+' : '-' }}{{ formatVND(tx.amount) }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div class="space-y-2">
+              <div v-for="tx in filteredFundTransactions" :key="tx.id"
+                class="p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100">
+                <div class="min-w-0 pr-2">
+                  <div class="flex items-center space-x-1.5">
+                    <span :class="['px-1.5 py-0.2 rounded font-bold text-[9px]',
+                                  tx.type === 'CONTRIBUTION' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800']">
+                      {{ tx.type === 'CONTRIBUTION' ? 'THU' : 'CHI' }}
+                    </span>
+                    <h4 class="text-xs font-bold text-slate-800 truncate">
+                      {{ tx.note || (tx.bill_title ? 'Chi cho: ' + tx.bill_title : 'Giao dịch') }}
+                    </h4>
+                  </div>
+                  <p class="text-[11px] text-slate-500 mt-0.5 truncate">
+                    {{ tx.transaction_date }} • {{ tx.member_name || 'Quỹ nhóm' }}
+                  </p>
+                </div>
+                <div class="text-right shrink-0">
+                  <span :class="['text-xs sm:text-sm font-extrabold', tx.type === 'CONTRIBUTION' ? 'text-emerald-600' : 'text-rose-600']">
+                    {{ tx.type === 'CONTRIBUTION' ? '+' : '-' }}{{ formatVND(tx.amount) }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- 4. DEBTS VIEW -->
-        <div v-if="currentTab === 'debts'" class="space-y-5">
+        <div v-if="currentTab === 'debts'" class="space-y-4">
           <!-- Sub-tabs -->
           <div class="flex border-b border-slate-200">
             <button @click="debtSubTab = 'i_owe'"
-              :class="['py-3 px-5 font-bold text-sm border-b-2 transition flex items-center space-x-2',
-                      debtSubTab === 'i_owe' ? 'border-rose-600 text-rose-600' : 'border-transparent text-slate-500 hover:text-slate-800']">
-              <span>💳</span>
-              <span>Tôi cần trả</span>
-              <span class="px-2 py-0.5 bg-rose-100 text-rose-800 text-xs rounded-full font-extrabold">
+              :class="['flex-1 py-2.5 font-bold text-xs sm:text-sm border-b-2 transition flex items-center justify-center space-x-1.5',
+                      debtSubTab === 'i_owe' ? 'border-rose-600 text-rose-600' : 'border-transparent text-slate-500']">
+              <span>💳 Tôi cần trả</span>
+              <span class="px-1.5 py-0.2 bg-rose-100 text-rose-800 text-[10px] rounded-full font-extrabold">
                 {{ debtsData.i_owe.length }}
               </span>
             </button>
             <button @click="debtSubTab = 'others_owe'"
-              :class="['py-3 px-5 font-bold text-sm border-b-2 transition flex items-center space-x-2',
-                      debtSubTab === 'others_owe' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-800']">
-              <span>📥</span>
-              <span>Người khác nợ tôi</span>
-              <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-xs rounded-full font-extrabold">
+              :class="['flex-1 py-2.5 font-bold text-xs sm:text-sm border-b-2 transition flex items-center justify-center space-x-1.5',
+                      debtSubTab === 'others_owe' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500']">
+              <span>📥 Người khác nợ tôi</span>
+              <span class="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[10px] rounded-full font-extrabold">
                 {{ debtsData.others_owe.length }}
               </span>
             </button>
@@ -602,51 +613,50 @@
 
           <!-- Sub-tab 1: I OWE -->
           <div v-if="debtSubTab === 'i_owe'">
-            <div v-if="debtsData.i_owe.length === 0" class="bg-white rounded-2xl p-12 text-center border border-slate-200 text-slate-400">
-              <span class="text-4xl block mb-2">🎉</span>
-              Tuyệt vời! Bạn không còn khoản nợ nào cần trả.
+            <div v-if="debtsData.i_owe.length === 0" class="bg-white rounded-2xl p-8 text-center border border-slate-200 text-slate-400 text-xs">
+              <span class="text-3xl block mb-2">🎉</span>
+              Bạn không còn khoản nợ nào cần trả.
             </div>
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div v-else class="space-y-3">
               <div v-for="d in debtsData.i_owe" :key="d.participant_record_id"
-                class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex flex-col justify-between">
-                <div>
-                  <div class="flex items-start justify-between">
-                    <div>
-                      <h4 class="font-bold text-slate-800 text-sm">{{ d.bill_title }}</h4>
-                      <p class="text-xs text-slate-500">{{ d.expense_date }}</p>
-                    </div>
-                    <span class="text-base font-extrabold text-rose-600">{{ formatVND(d.share_amount) }}</span>
+                class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm space-y-3">
+                <div class="flex items-start justify-between">
+                  <div class="min-w-0 pr-2">
+                    <h4 class="font-bold text-slate-800 text-sm truncate">{{ d.bill_title }}</h4>
+                    <p class="text-[11px] text-slate-500">{{ d.expense_date }}</p>
                   </div>
-
-                  <!-- Creditor Details -->
-                  <div class="my-4 p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                    <div>
-                      <p class="text-[11px] text-slate-400 font-bold uppercase">Người nhận tiền</p>
-                      <p class="text-xs font-bold text-slate-800">{{ d.creditor_name }}</p>
-                      <p v-if="d.bank_account_number" class="text-xs text-indigo-700 font-mono font-semibold">
-                        {{ d.bank_name }} • {{ d.bank_account_number }} ({{ d.bank_account_name }})
-                      </p>
-                      <p v-else class="text-[11px] text-amber-600 italic">Chưa cập nhật STK ngân hàng</p>
-                    </div>
-                  </div>
+                  <span class="text-base font-extrabold text-rose-600 shrink-0">{{ formatVND(d.share_amount) }}</span>
                 </div>
 
-                <div class="flex items-center justify-between pt-3 border-t border-slate-100">
-                  <span :class="['text-xs font-bold px-2 py-0.5 rounded-full',
+                <!-- Creditor Bank Card -->
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs space-y-1">
+                  <div class="flex justify-between items-center">
+                    <span class="text-slate-400 text-[11px]">Người nhận:</span>
+                    <b class="text-slate-800">{{ d.creditor_name }}</b>
+                  </div>
+                  <div v-if="d.bank_account_number" class="flex justify-between items-center">
+                    <span class="text-slate-400 text-[11px]">Số tài khoản:</span>
+                    <b class="text-indigo-700 font-mono">{{ d.bank_name }} • {{ d.bank_account_number }}</b>
+                  </div>
+                  <p v-else class="text-[10px] text-amber-600 italic">Chưa cập nhật tài khoản ngân hàng</p>
+                </div>
+
+                <div class="flex items-center justify-between pt-1">
+                  <span :class="['text-[11px] font-bold px-2 py-0.5 rounded-full',
                                 d.payment_status === 'PAYMENT_REPORTED' ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-700']">
-                    {{ d.payment_status === 'PAYMENT_REPORTED' ? '⏳ Đã báo chuyển' : 'Chưa thanh toán' }}
+                    {{ d.payment_status === 'PAYMENT_REPORTED' ? '⏳ Đã báo' : 'Chưa trả' }}
                   </span>
 
                   <div class="flex items-center space-x-2">
                     <button v-if="d.bank_account_number" @click="showDebtVietQR(d)"
-                      class="px-3 py-1.5 bg-violet-100 hover:bg-violet-200 text-violet-800 font-bold rounded-xl text-xs transition">
+                      class="px-3 py-2 bg-violet-100 hover:bg-violet-200 text-violet-800 font-bold rounded-xl text-xs transition active:scale-95">
                       QR Chuyển
                     </button>
                     <button v-if="d.payment_status === 'UNPAID'" @click="reportPayment(d.bill_id)"
-                      class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow transition">
+                      class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow transition active:scale-95">
                       Tôi đã trả
                     </button>
-                    <span v-else class="text-xs text-blue-600 font-semibold italic">Đang chờ xác nhận</span>
+                    <span v-else class="text-xs text-blue-600 font-semibold italic">Chờ xác nhận</span>
                   </div>
                 </div>
               </div>
@@ -655,42 +665,26 @@
 
           <!-- Sub-tab 2: OTHERS OWE ME -->
           <div v-if="debtSubTab === 'others_owe'">
-            <div v-if="debtsData.others_owe.length === 0" class="bg-white rounded-2xl p-12 text-center border border-slate-200 text-slate-400">
-              <span class="text-4xl block mb-2">🤝</span>
+            <div v-if="debtsData.others_owe.length === 0" class="bg-white rounded-2xl p-8 text-center border border-slate-200 text-slate-400 text-xs">
+              <span class="text-3xl block mb-2">🤝</span>
               Không có ai đang nợ tiền bạn.
             </div>
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div v-else class="space-y-3">
               <div v-for="d in debtsData.others_owe" :key="d.participant_record_id"
-                class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex flex-col justify-between">
-                <div>
-                  <div class="flex items-start justify-between">
-                    <div>
-                      <h4 class="font-bold text-slate-800 text-sm">{{ d.bill_title }}</h4>
-                      <p class="text-xs text-slate-500">{{ d.expense_date }}</p>
-                    </div>
-                    <span class="text-base font-extrabold text-emerald-600">{{ formatVND(d.share_amount) }}</span>
-                  </div>
-
-                  <!-- Debtor Details -->
-                  <div class="my-4 p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center space-x-3">
-                    <div class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">
-                      <span>{{ initials(d.debtor_name) }}</span>
-                    </div>
-                    <div>
-                      <p class="text-[11px] text-slate-400 font-bold uppercase">Người nợ</p>
-                      <p class="text-xs font-bold text-slate-800">{{ d.debtor_name }}</p>
-                    </div>
-                  </div>
+                class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm flex items-center justify-between">
+                <div class="min-w-0 pr-2">
+                  <h4 class="font-bold text-slate-800 text-sm truncate">{{ d.bill_title }}</h4>
+                  <p class="text-[11px] text-slate-500">Người nợ: <b>{{ d.debtor_name }}</b></p>
+                  <span :class="['inline-block text-[9px] font-bold px-1.5 py-0.2 rounded mt-1',
+                                d.payment_status === 'PAYMENT_REPORTED' ? 'bg-blue-100 text-blue-800 animate-pulse' : 'bg-slate-200 text-slate-600']">
+                    {{ d.payment_status === 'PAYMENT_REPORTED' ? '⚡ Đã báo trả' : 'Chưa trả' }}
+                  </span>
                 </div>
 
-                <div class="flex items-center justify-between pt-3 border-t border-slate-100">
-                  <span :class="['text-xs font-bold px-2 py-0.5 rounded-full',
-                                d.payment_status === 'PAYMENT_REPORTED' ? 'bg-blue-100 text-blue-800 animate-pulse' : 'bg-slate-200 text-slate-700']">
-                    {{ d.payment_status === 'PAYMENT_REPORTED' ? '⚡ Đối phương đã báo trả' : 'Chưa thanh toán' }}
-                  </span>
-
+                <div class="text-right shrink-0 space-y-1.5">
+                  <span class="text-sm sm:text-base font-extrabold text-emerald-600 block">{{ formatVND(d.share_amount) }}</span>
                   <button @click="confirmPayment(d.bill_id, d.debtor_id)"
-                    class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow transition">
+                    class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow transition active:scale-95">
                     Đã nhận tiền
                   </button>
                 </div>
@@ -700,92 +694,92 @@
         </div>
 
         <!-- 5. NOTIFICATIONS VIEW -->
-        <div v-if="currentTab === 'notifications'" class="space-y-4 max-w-2xl mx-auto">
+        <div v-if="currentTab === 'notifications'" class="space-y-3 max-w-xl mx-auto">
           <div class="flex items-center justify-between">
-            <h3 class="font-bold text-slate-800 text-lg">Thông báo của bạn</h3>
+            <h3 class="font-bold text-slate-800 text-sm sm:text-base">Thông báo của bạn</h3>
             <button @click="readAllNotifications" class="text-xs font-bold text-indigo-600 hover:underline">
-              Đánh dấu tất cả đã đọc
+              Đọc tất cả
             </button>
           </div>
 
-          <div v-if="notifications.length === 0" class="bg-white rounded-2xl p-12 text-center border border-slate-200 text-slate-400">
-            <span class="text-4xl block mb-2">🔕</span>
+          <div v-if="notifications.length === 0" class="bg-white rounded-2xl p-8 text-center border border-slate-200 text-slate-400 text-xs">
+            <span class="text-3xl block mb-2">🔕</span>
             Bạn không có thông báo nào.
           </div>
           <div v-else class="space-y-2">
             <div v-for="n in notifications" :key="n.id"
               @click="markNotificationRead(n)"
-              :class="['p-4 rounded-2xl border transition cursor-pointer flex items-start space-x-3',
+              :class="['p-3.5 rounded-2xl border transition cursor-pointer flex items-start space-x-2.5 active:scale-[0.99]',
                       n.is_read ? 'bg-white border-slate-200/80 text-slate-700' : 'bg-indigo-50/60 border-indigo-100 text-indigo-950 font-medium']">
-              <span class="text-xl mt-0.5">{{ notifIcon(n.type) }}</span>
-              <div class="flex-1">
+              <span class="text-lg mt-0.5 shrink-0">{{ notifIcon(n.type) }}</span>
+              <div class="min-w-0 flex-1">
                 <div class="flex items-center justify-between">
-                  <h4 class="text-xs font-bold">{{ n.title }}</h4>
-                  <span class="text-[10px] text-slate-400">{{ formatDate(n.created_at) }}</span>
+                  <h4 class="text-xs font-bold truncate">{{ n.title }}</h4>
+                  <span class="text-[10px] text-slate-400 shrink-0">{{ formatDate(n.created_at) }}</span>
                 </div>
-                <p class="text-xs mt-1 text-slate-600">{{ n.message }}</p>
+                <p class="text-xs mt-0.5 text-slate-600 leading-snug">{{ n.message }}</p>
               </div>
             </div>
           </div>
         </div>
 
         <!-- 6. PROFILE VIEW -->
-        <div v-if="currentTab === 'profile'" class="max-w-xl mx-auto">
-          <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-            <div class="flex items-center space-x-4 border-b border-slate-100 pb-6">
-              <div class="w-16 h-16 rounded-full bg-indigo-600 text-white font-black text-xl flex items-center justify-center overflow-hidden shadow-md">
+        <div v-if="currentTab === 'profile'" class="max-w-md mx-auto">
+          <div class="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex items-center space-x-3.5 border-b border-slate-100 pb-4">
+              <div class="w-14 h-14 rounded-full bg-indigo-600 text-white font-black text-lg flex items-center justify-center overflow-hidden shadow-md shrink-0">
                 <img v-if="profileForm.avatar_url" :src="profileForm.avatar_url" class="w-full h-full object-cover" />
                 <span v-else>{{ initials(profileForm.display_name) }}</span>
               </div>
-              <div>
-                <h3 class="font-bold text-slate-800 text-lg">{{ currentUser.display_name }}</h3>
-                <p class="text-xs text-slate-500 font-mono">{{ currentUser.email }}</p>
+              <div class="min-w-0">
+                <h3 class="font-bold text-slate-800 text-base truncate">{{ currentUser.display_name }}</h3>
+                <p class="text-xs text-slate-500 font-mono truncate">{{ currentUser.email }}</p>
               </div>
             </div>
 
-            <form @submit.prevent="updateProfile" class="space-y-4">
+            <form @submit.prevent="updateProfile" class="space-y-3.5 text-xs">
               <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Tên hiển thị</label>
+                <label class="block font-bold text-slate-600 mb-1">Tên hiển thị</label>
                 <input v-model="profileForm.display_name" type="text" required
-                  class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-sm font-medium" />
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-base sm:text-xs font-medium" />
               </div>
 
               <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Avatar URL (tuỳ chọn)</label>
+                <label class="block font-bold text-slate-600 mb-1">Avatar URL (tuỳ chọn)</label>
                 <input v-model="profileForm.avatar_url" type="url" placeholder="https://..."
-                  class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-sm" />
+                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-base sm:text-xs" />
               </div>
 
-              <div class="border-t border-slate-100 pt-4">
-                <h4 class="font-bold text-slate-800 text-sm mb-3">Thông tin tài khoản nhận tiền (VietQR)</h4>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="border-t border-slate-100 pt-3">
+                <h4 class="font-bold text-slate-800 text-xs mb-2">Tài khoản nhận tiền (VietQR)</h4>
+                <div class="grid grid-cols-2 gap-2">
                   <div>
                     <label class="block text-[11px] font-bold text-slate-500 mb-1">Ngân hàng</label>
-                    <input v-model="profileForm.bank_name" type="text" placeholder="VIB, VCB, MB..."
-                      class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-xs uppercase" />
+                    <input v-model="profileForm.bank_name" type="text" placeholder="VIB, VCB..."
+                      class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-base sm:text-xs uppercase" />
                   </div>
                   <div>
                     <label class="block text-[11px] font-bold text-slate-500 mb-1">Số tài khoản</label>
-                    <input v-model="profileForm.bank_account_number" type="text" placeholder="000123456789"
-                      class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-xs font-mono" />
+                    <input v-model="profileForm.bank_account_number" type="text" inputmode="numeric" placeholder="000123..."
+                      class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-base sm:text-xs font-mono" />
                   </div>
                 </div>
-                <div class="mt-3">
+                <div class="mt-2">
                   <label class="block text-[11px] font-bold text-slate-500 mb-1">Tên chủ tài khoản</label>
                   <input v-model="profileForm.bank_account_name" type="text" placeholder="NGUYEN VAN A"
-                    class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-xs uppercase" />
+                    class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-base sm:text-xs uppercase" />
                 </div>
               </div>
 
-              <!-- Live VietQR Preview if bank info provided -->
-              <div v-if="profileForm.bank_name && profileForm.bank_account_number" class="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
-                <p class="text-[11px] font-bold text-slate-500 uppercase mb-2">Xem trước mã VietQR của bạn</p>
+              <!-- Live QR Preview -->
+              <div v-if="profileForm.bank_name && profileForm.bank_account_number" class="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Xem trước VietQR</p>
                 <img :src="'https://img.vietqr.io/image/' + encodeURIComponent(profileForm.bank_name) + '-' + encodeURIComponent(profileForm.bank_account_number) + '-compact2.png'"
-                  alt="VietQR" class="mx-auto max-w-[200px] rounded-xl shadow-sm border border-slate-200" />
+                  alt="VietQR" class="mx-auto max-w-[160px] rounded-xl shadow-sm border border-slate-200" />
               </div>
 
               <button :disabled="profileLoading" type="submit"
-                class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition disabled:opacity-50">
+                class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition disabled:opacity-50 text-xs sm:text-sm active:scale-98">
                 {{ profileLoading ? 'Đang lưu...' : 'Lưu thay đổi' }}
               </button>
             </form>
@@ -797,83 +791,86 @@
     </main>
 
     <!-- ================== MOBILE BOTTOM NAVIGATION ================== -->
-    <nav v-if="currentUser" class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 px-2 py-1 shadow-lg">
+    <nav v-if="currentUser" class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-1 pt-1.5 safe-nav-pb shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
       <div class="flex items-center justify-around">
         <button v-for="tab in tabs" :key="tab.id" @click="currentTab = tab.id"
-          :class="['flex flex-col items-center py-1 px-2 rounded-lg transition relative',
-                  currentTab === tab.id ? 'text-indigo-600 font-bold' : 'text-slate-400 font-medium']">
+          :class="['flex flex-col items-center py-1 px-2.5 rounded-xl transition relative active:scale-90',
+                  currentTab === tab.id ? 'text-indigo-600 font-bold bg-indigo-50/70' : 'text-slate-400 font-medium']">
           <span class="text-lg leading-none">{{ tab.icon }}</span>
           <span class="text-[10px] mt-1">{{ tab.shortName || tab.name }}</span>
-          <span v-if="tab.id === 'notifications' && unreadCount > 0" class="absolute top-0 right-2 w-3.5 h-3.5 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+          <span v-if="tab.id === 'notifications' && unreadCount > 0" class="absolute top-0.5 right-2 w-3.5 h-3.5 bg-rose-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center">
             {{ unreadCount }}
           </span>
         </button>
       </div>
     </nav>
 
-    <!-- ================== MODAL: TẠO / SỬA BILL ================== -->
-    <div v-if="showBillModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 my-8 space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-          <h3 class="font-black text-slate-800 text-lg">
+    <!-- ================== MODAL: TẠO / SỬA BILL (Mobile Bottom Sheet) ================== -->
+    <div v-if="showBillModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
+      <div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-100 max-h-[92vh] flex flex-col">
+        <!-- Swipe handle for mobile -->
+        <div class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-2 sm:hidden shrink-0"></div>
+
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2.5 shrink-0">
+          <h3 class="font-black text-slate-800 text-base sm:text-lg">
             {{ billForm.id ? 'Chỉnh sửa Hoá đơn' : 'Tạo Hoá đơn mới' }}
           </h3>
-          <button @click="showBillModal = false" class="text-slate-400 hover:text-slate-700 text-xl font-bold">✕</button>
+          <button @click="showBillModal = false" class="p-1 text-slate-400 hover:text-slate-700 text-xl font-bold leading-none">✕</button>
         </div>
 
         <!-- Warning on Edit -->
-        <div v-if="billForm.id && billForm.hasReportedOrPaid" class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs flex items-start space-x-2">
+        <div v-if="billForm.id && billForm.hasReportedOrPaid" class="my-2 p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[11px] flex items-start space-x-1.5 shrink-0">
           <span>⚠️</span>
-          <span><b>Cảnh báo:</b> Bill này đã có thành viên xác nhận thanh toán. Việc chỉnh sửa sẽ reset trạng thái thanh toán của tất cả thành viên về Chưa trả.</span>
+          <span><b>Cảnh báo:</b> Bill này đã có thành viên xác nhận thanh toán. Chỉnh sửa sẽ reset trạng thái về Chưa trả.</span>
         </div>
 
-        <form @submit.prevent="submitBillForm" class="space-y-4 text-xs">
+        <form @submit.prevent="submitBillForm" class="space-y-3.5 text-xs overflow-y-auto pr-1 flex-1 py-2">
           <!-- Title & Category -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div class="sm:col-span-2">
-              <label class="block font-bold text-slate-600 mb-1">Mục đích / Tên hoá đơn *</label>
-              <input v-model="billForm.title" type="text" required placeholder="Ăn trưa, Mua đồ dùng..."
-                class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-sm font-semibold" />
+          <div class="grid grid-cols-3 gap-2">
+            <div class="col-span-2">
+              <label class="block font-bold text-slate-600 mb-1">Tên hoá đơn *</label>
+              <input v-model="billForm.title" type="text" required placeholder="Ăn trưa, Cafe..."
+                class="w-full px-3 py-2 text-base sm:text-xs rounded-xl border border-slate-200 focus:border-indigo-500 outline-none font-semibold" />
             </div>
             <div>
               <label class="block font-bold text-slate-600 mb-1">Danh mục</label>
-              <select v-model="billForm.category" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white outline-none">
+              <select v-model="billForm.category" class="w-full px-2 py-2 text-xs rounded-xl border border-slate-200 bg-white outline-none">
                 <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
               </select>
             </div>
           </div>
 
           <!-- Total Amount & Date -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="block font-bold text-slate-600 mb-1">Tổng số tiền (VND) *</label>
-              <input v-model.number="billForm.total_amount" @input="recalcSplit" type="number" min="1000" step="1000" required placeholder="300000"
-                class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-sm font-extrabold font-mono text-indigo-900" />
+              <label class="block font-bold text-slate-600 mb-1">Tổng tiền (VND) *</label>
+              <input v-model.number="billForm.total_amount" @input="recalcSplit" type="number" inputmode="numeric" min="1000" step="1000" required placeholder="300000"
+                class="w-full px-3 py-2 text-base sm:text-sm font-extrabold font-mono text-indigo-900 rounded-xl border border-slate-200 outline-none focus:border-indigo-500" />
             </div>
             <div>
               <label class="block font-bold text-slate-600 mb-1">Ngày chi *</label>
               <input v-model="billForm.expense_date" type="date" required
-                class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none" />
+                class="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-200 outline-none" />
             </div>
           </div>
 
           <!-- Payer & Source Type -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="block font-bold text-slate-600 mb-1">Người thanh toán (Payer) *</label>
-              <select v-model="billForm.payer_user_id" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold outline-none">
+              <label class="block font-bold text-slate-600 mb-1">Người trả *</label>
+              <select v-model="billForm.payer_user_id" class="w-full px-2 py-2 text-xs rounded-xl border border-slate-200 bg-white font-semibold outline-none">
                 <option v-for="u in teamUsers" :key="u.id" :value="u.id">{{ u.display_name }}</option>
               </select>
             </div>
             <div>
               <label class="block font-bold text-slate-600 mb-1">Nguồn tiền *</label>
-              <div class="flex items-center space-x-2 pt-0.5">
-                <label class="flex-1 text-center py-2 rounded-xl border cursor-pointer font-bold transition text-xs"
+              <div class="flex items-center space-x-1.5 pt-0.5">
+                <label class="flex-1 text-center py-1.5 rounded-xl border cursor-pointer font-bold transition text-[11px]"
                   :class="billForm.source_type === 'PERSONAL' ? 'bg-amber-50 border-amber-400 text-amber-900' : 'border-slate-200 text-slate-500'">
                   <input type="radio" v-model="billForm.source_type" value="PERSONAL" class="hidden" @change="recalcSplit" />
                   Cá nhân
                 </label>
-                <label class="flex-1 text-center py-2 rounded-xl border cursor-pointer font-bold transition text-xs"
+                <label class="flex-1 text-center py-1.5 rounded-xl border cursor-pointer font-bold transition text-[11px]"
                   :class="billForm.source_type === 'GROUP_FUND' ? 'bg-violet-50 border-violet-400 text-violet-900' : 'border-slate-200 text-slate-500'">
                   <input type="radio" v-model="billForm.source_type" value="GROUP_FUND" class="hidden" @change="recalcSplit" />
                   Quỹ nhóm
@@ -885,64 +882,64 @@
           <!-- Description -->
           <div>
             <label class="block font-bold text-slate-600 mb-1">Ghi chú thêm</label>
-            <input v-model="billForm.description" type="text" placeholder="Địa chỉ, lý do..."
-              class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none" />
+            <input v-model="billForm.description" type="text" placeholder="Địa chỉ, ghi chú..."
+              class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 outline-none" />
           </div>
 
           <!-- PARTICIPANTS & SPLIT SETTINGS -->
-          <div class="border-t border-slate-100 pt-3">
+          <div class="border-t border-slate-100 pt-2.5">
             <div class="flex items-center justify-between mb-2">
-              <label class="font-bold text-slate-700 uppercase tracking-wider text-[11px]">
-                Danh sách tham gia ({{ selectedParticipantIds.length }} người)
+              <label class="font-bold text-slate-700 uppercase tracking-wider text-[10px]">
+                Tham gia ({{ selectedParticipantIds.length }} người)
               </label>
-              <button type="button" @click="selectAllParticipants" class="text-indigo-600 font-semibold hover:underline text-[11px]">
+              <button type="button" @click="selectAllParticipants" class="text-indigo-600 font-bold hover:underline text-[11px]">
                 Chọn tất cả
               </button>
             </div>
 
             <!-- Split mode toggle if PERSONAL -->
-            <div v-if="billForm.source_type === 'PERSONAL'" class="mb-3">
+            <div v-if="billForm.source_type === 'PERSONAL'" class="mb-2.5">
               <div class="flex items-center space-x-1 p-1 bg-slate-100 rounded-xl">
                 <button type="button" @click="setSplitMode('EQUAL')"
-                  :class="['flex-1 py-1.5 rounded-lg font-bold text-[11px] transition',
+                  :class="['flex-1 py-1.5 rounded-lg font-bold text-[10px] transition',
                           billForm.split_mode === 'EQUAL' ? 'bg-white shadow text-indigo-700' : 'text-slate-500']">
-                  Chia đều (Mode A)
+                  Chia đều
                 </button>
                 <button type="button" @click="setSplitMode('ADJUSTED')"
-                  :class="['flex-1 py-1.5 rounded-lg font-bold text-[11px] transition',
+                  :class="['flex-1 py-1.5 rounded-lg font-bold text-[10px] transition',
                           billForm.split_mode === 'ADJUSTED' ? 'bg-white shadow text-indigo-700' : 'text-slate-500']">
-                  Chia đều chỉnh sửa (Mode B)
+                  Chỉnh sửa
                 </button>
                 <button type="button" @click="setSplitMode('CUSTOM')"
-                  :class="['flex-1 py-1.5 rounded-lg font-bold text-[11px] transition',
+                  :class="['flex-1 py-1.5 rounded-lg font-bold text-[10px] transition',
                           billForm.split_mode === 'CUSTOM' ? 'bg-white shadow text-indigo-700' : 'text-slate-500']">
-                  Tự nhập riêng (Mode C)
+                  Tự nhập
                 </button>
               </div>
             </div>
 
             <!-- Participants list with check & share amount inputs -->
-            <div class="max-h-48 overflow-y-auto space-y-2 pr-1">
+            <div class="max-h-44 overflow-y-auto space-y-1.5 pr-1">
               <div v-for="u in teamUsers" :key="u.id"
-                class="p-2.5 rounded-xl border border-slate-100 flex items-center justify-between bg-slate-50/70">
-                <label class="flex items-center space-x-2.5 cursor-pointer">
+                class="p-2 rounded-xl border border-slate-100 flex items-center justify-between bg-slate-50/70">
+                <label class="flex items-center space-x-2 cursor-pointer min-w-0 pr-1">
                   <input type="checkbox" :value="u.id" v-model="selectedParticipantIds" @change="recalcSplit"
-                    class="rounded text-indigo-600 focus:ring-0 w-4 h-4" />
-                  <span class="font-bold text-slate-800 text-xs">{{ u.display_name }}</span>
+                    class="rounded text-indigo-600 focus:ring-0 w-4 h-4 shrink-0" />
+                  <span class="font-bold text-slate-800 text-xs truncate">{{ u.display_name }}</span>
                 </label>
 
                 <!-- Share amount display or input -->
-                <div v-if="isParticipantSelected(u.id)">
-                  <div v-if="billForm.source_type === 'GROUP_FUND'" class="text-[11px] text-slate-400 font-semibold italic">
-                    Trừ quỹ nhóm
+                <div v-if="isParticipantSelected(u.id)" class="shrink-0">
+                  <div v-if="billForm.source_type === 'GROUP_FUND'" class="text-[10px] text-slate-400 font-semibold italic">
+                    Trừ quỹ
                   </div>
                   <div v-else-if="billForm.split_mode === 'EQUAL'" class="font-mono font-bold text-xs text-indigo-900">
                     {{ formatVND(participantShares[u.id] || 0) }}
                   </div>
                   <div v-else class="flex items-center space-x-1">
-                    <input type="number" v-model.number="participantShares[u.id]" step="1000"
-                      class="w-24 px-2 py-1 text-right font-mono font-bold text-xs rounded-lg border border-slate-200 outline-none focus:border-indigo-500" />
-                    <span class="text-slate-400">đ</span>
+                    <input type="number" inputmode="numeric" v-model.number="participantShares[u.id]" step="1000"
+                      class="w-20 px-1.5 py-1 text-right font-mono font-bold text-xs rounded-lg border border-slate-200 outline-none" />
+                    <span class="text-slate-400 text-[10px]">đ</span>
                   </div>
                 </div>
               </div>
@@ -950,40 +947,41 @@
 
             <!-- Split balance validation text -->
             <div v-if="billForm.source_type === 'PERSONAL'" class="mt-2 text-right">
-              <span v-if="sharesDiff === 0" class="text-emerald-600 font-bold text-xs">
-                ✓ Khớp tổng bill ({{ formatVND(billForm.total_amount) }})
+              <span v-if="sharesDiff === 0" class="text-emerald-600 font-bold text-[11px]">
+                ✓ Khớp tổng ({{ formatVND(billForm.total_amount) }})
               </span>
-              <span v-else class="text-rose-600 font-bold text-xs">
-                ⚠️ {{ sharesDiff > 0 ? 'Thừa ' + formatVND(sharesDiff) : 'Thiếu ' + formatVND(Math.abs(sharesDiff)) }} so với tổng bill!
+              <span v-else class="text-rose-600 font-bold text-[11px]">
+                ⚠️ {{ sharesDiff > 0 ? 'Thừa ' + formatVND(sharesDiff) : 'Thiếu ' + formatVND(Math.abs(sharesDiff)) }}
               </span>
             </div>
           </div>
 
-          <div class="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
-            <button type="button" @click="showBillModal = false" class="px-4 py-2 text-slate-500 hover:bg-slate-100 font-semibold rounded-xl">
+          <div class="pt-2 border-t border-slate-100 flex items-center justify-end space-x-2 shrink-0">
+            <button type="button" @click="showBillModal = false" class="px-3.5 py-2 text-slate-500 font-semibold rounded-xl text-xs">
               Huỷ
             </button>
             <button :disabled="billSubmitting || (billForm.source_type === 'PERSONAL' && sharesDiff !== 0)" type="submit"
-              class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition disabled:opacity-50">
-              {{ billSubmitting ? 'Đang lưu...' : (billForm.id ? 'Cập nhật Hoá đơn' : 'Tạo Hoá đơn') }}
+              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition disabled:opacity-50 text-xs active:scale-95">
+              {{ billSubmitting ? 'Đang lưu...' : (billForm.id ? 'Cập nhật' : 'Tạo Hoá đơn') }}
             </button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- ================== MODAL: ĐÓNG QUỸ ================== -->
-    <div v-if="showContributionModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-          <h3 class="font-black text-slate-800 text-lg">Đóng Quỹ Nhóm</h3>
+    <!-- ================== MODAL: ĐÓNG QUỸ (Mobile Bottom Sheet) ================== -->
+    <div v-if="showContributionModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4">
+        <div class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-1 sm:hidden"></div>
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+          <h3 class="font-black text-slate-800 text-base sm:text-lg">Đóng Quỹ Nhóm</h3>
           <button @click="showContributionModal = false" class="text-slate-400 hover:text-slate-700 text-xl font-bold">✕</button>
         </div>
 
-        <form @submit.prevent="submitContribution" class="space-y-4 text-xs">
+        <form @submit.prevent="submitContribution" class="space-y-3.5 text-xs">
           <div>
             <label class="block font-bold text-slate-600 mb-1">Số tiền đóng quỹ (VND) *</label>
-            <input v-model.number="contributionForm.amount" type="number" min="1000" step="1000" required placeholder="500000"
+            <input v-model.number="contributionForm.amount" type="number" inputmode="numeric" min="1000" step="1000" required placeholder="500000"
               class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-base font-extrabold font-mono text-emerald-700" />
           </div>
 
@@ -996,15 +994,15 @@
           <div>
             <label class="block font-bold text-slate-600 mb-1">Ghi chú (tuỳ chọn)</label>
             <input v-model="contributionForm.note" type="text" placeholder="Đóng quỹ tháng..."
-              class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none" />
+              class="w-full px-3 py-2 text-base sm:text-xs rounded-xl border border-slate-200 outline-none" />
           </div>
 
-          <div class="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
-            <button type="button" @click="showContributionModal = false" class="px-4 py-2 text-slate-500 hover:bg-slate-100 font-semibold rounded-xl">
+          <div class="pt-2 border-t border-slate-100 flex items-center justify-end space-x-2">
+            <button type="button" @click="showContributionModal = false" class="px-3.5 py-2 text-slate-500 font-semibold rounded-xl text-xs">
               Huỷ
             </button>
             <button :disabled="contributionSubmitting" type="submit"
-              class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow transition disabled:opacity-50">
+              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow transition disabled:opacity-50 text-xs active:scale-95">
               {{ contributionSubmitting ? 'Đang lưu...' : 'Ghi nhận đóng quỹ' }}
             </button>
           </div>
@@ -1012,16 +1010,17 @@
       </div>
     </div>
 
-    <!-- ================== MODAL: VIETQR POPUP ================== -->
-    <div v-if="showQRModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4 text-center">
+    <!-- ================== MODAL: VIETQR POPUP (Mobile Optimized) ================== -->
+    <div v-if="showQRModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-slate-100 space-y-3.5 text-center">
+        <div class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-1 sm:hidden"></div>
         <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-          <h3 class="font-black text-slate-800 text-base">Quét mã VietQR chuyển khoản</h3>
+          <h3 class="font-black text-slate-800 text-sm sm:text-base">Mã VietQR Chuyển Khoản</h3>
           <button @click="showQRModal = false" class="text-slate-400 hover:text-slate-700 text-xl font-bold">✕</button>
         </div>
 
-        <div class="py-2">
-          <img :src="qrImageUrl" alt="VietQR" class="mx-auto rounded-2xl shadow border border-slate-200 max-w-[220px]" />
+        <div class="py-1">
+          <img :src="qrImageUrl" alt="VietQR" class="mx-auto rounded-2xl shadow border border-slate-200 max-w-[200px]" />
         </div>
 
         <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-left text-xs space-y-1">
@@ -1043,7 +1042,7 @@
           </div>
         </div>
 
-        <button @click="showQRModal = false" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition">
+        <button @click="showQRModal = false" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition active:scale-95">
           Đóng
         </button>
       </div>
@@ -1056,7 +1055,6 @@
 
     createApp({
       setup() {
-        // App State
         const currentUser = ref(null);
         const currentTab = ref('dashboard');
         const debtSubTab = ref('i_owe');
@@ -1064,16 +1062,15 @@
         const tabs = [
           { id: 'dashboard', name: 'Tổng quan', shortName: 'Tổng quan', icon: '📊' },
           { id: 'bills', name: 'Hoá đơn', shortName: 'Hoá đơn', icon: '🧾' },
-          { id: 'fund', name: 'Quỹ nhóm', shortName: 'Quỹ nhóm', icon: '💰' },
+          { id: 'fund', name: 'Quỹ nhóm', shortName: 'Quỹ', icon: '💰' },
           { id: 'debts', name: 'Công nợ', shortName: 'Công nợ', icon: '💳' },
-          { id: 'notifications', name: 'Thông báo', shortName: 'Thông báo', icon: '🔔' },
+          { id: 'notifications', name: 'Thông báo', shortName: 'Báo', icon: '🔔' },
           { id: 'profile', name: 'Cá nhân', shortName: 'Cá nhân', icon: '👤' },
         ];
 
         const categories = ['Ăn uống', 'Cafe', 'Di chuyển', 'Event', 'Khác'];
 
-        // Auth State
-        const authStep = ref('email'); // 'email', 'login', 'otp_pin'
+        const authStep = ref('email');
         const authEmail = ref('');
         const authPin = ref('');
         const authOtp = ref('');
@@ -1083,7 +1080,6 @@
         const authLoading = ref(false);
         const authError = ref('');
 
-        // Dashboard Data
         const dashboardData = ref({
           fund_balance: 0,
           total_i_owe: 0,
@@ -1093,39 +1089,20 @@
           unread_notifications_count: 0
         });
 
-        // Bills Data
         const bills = ref([]);
         const billsLoading = ref(false);
-        const billFilter = ref({
-          search: '',
-          category: '',
-          source_type: ''
-        });
+        const expandedBillIds = ref([]);
+        const billFilter = ref({ search: '', category: '', source_type: '' });
 
-        // Fund Data
-        const fundSummary = ref({
-          balance: 0,
-          total_in: 0,
-          total_out: 0,
-          members: []
-        });
+        const fundSummary = ref({ balance: 0, total_in: 0, total_out: 0, members: [] });
         const fundTransactions = ref([]);
         const fundTxFilter = ref('');
 
-        // Debts Data
-        const debtsData = ref({
-          i_owe: [],
-          others_owe: []
-        });
-
-        // Notifications
+        const debtsData = ref({ i_owe: [], others_owe: [] });
         const notifications = ref([]);
         const unreadCount = ref(0);
-
-        // Team Users
         const teamUsers = ref([]);
 
-        // Profile Form
         const profileForm = ref({
           display_name: '',
           avatar_url: '',
@@ -1135,7 +1112,6 @@
         });
         const profileLoading = ref(false);
 
-        // Modals
         const showBillModal = ref(false);
         const billSubmitting = ref(false);
         const billForm = ref({
@@ -1165,7 +1141,6 @@
         const qrData = ref({});
         const qrImageUrl = ref('');
 
-        // ---------------- Helpers ----------------
         const formatVND = (val) => {
           if (val === null || val === undefined) return '0 đ';
           return new Intl.NumberFormat('vi-VN').format(val) + ' đ';
@@ -1197,7 +1172,12 @@
           return '🔔';
         };
 
-        // ---------------- Split Calculations ----------------
+        const toggleBillExpand = (billId) => {
+          const idx = expandedBillIds.value.indexOf(billId);
+          if (idx >= 0) expandedBillIds.value.splice(idx, 1);
+          else expandedBillIds.value.push(billId);
+        };
+
         const isParticipantSelected = (uid) => selectedParticipantIds.value.includes(uid);
 
         const selectAllParticipants = () => {
@@ -1222,7 +1202,6 @@
               participantShares.value[uid] = base + (idx < rem ? 1 : 0);
             });
           } else if (billForm.value.split_mode === 'ADJUSTED') {
-            // keep existing or init with equal
             const base = Math.floor(total / count);
             selectedParticipantIds.value.forEach((uid) => {
               if (participantShares.value[uid] === undefined) {
@@ -1240,7 +1219,6 @@
           return sum - (billForm.value.total_amount || 0);
         });
 
-        // ---------------- API Calls ----------------
         const api = async (endpoint, options = {}) => {
           try {
             options.headers = options.headers || {};
@@ -1250,16 +1228,13 @@
             }
             const res = await fetch(endpoint, options);
             const data = await res.json().catch(() => ({}));
-            if (!res.ok) {
-              throw new Error(data.detail || 'Có lỗi xảy ra');
-            }
+            if (!res.ok) throw new Error(data.detail || 'Có lỗi xảy ra');
             return data;
           } catch (err) {
             throw err;
           }
         };
 
-        // ---------------- Auth Logic ----------------
         const checkAuth = async () => {
           try {
             const me = await api('/api/auth/me');
@@ -1282,7 +1257,6 @@
             if (res.exists) {
               authStep.value = 'login';
             } else {
-              // Not registered -> trigger OTP
               authPurpose.value = 'REGISTER';
               const otpRes = await api('/api/auth/request-otp', {
                 method: 'POST',
@@ -1367,7 +1341,6 @@
           authOtp.value = '';
         };
 
-        // ---------------- Data Loading ----------------
         const loadAllData = async () => {
           await Promise.all([
             loadDashboard(),
@@ -1431,7 +1404,6 @@
           } catch (e) {}
         };
 
-        // ---------------- Bill Actions ----------------
         const openCreateBillModal = () => {
           billForm.value = {
             id: null,
@@ -1509,7 +1481,7 @@
         };
 
         const confirmDeleteBill = async (bill) => {
-          if (!confirm(`Bạn có chắc chắn muốn xoá hoá đơn "${bill.title}" không?`)) return;
+          if (!confirm(`Bạn có chắc muốn xoá hoá đơn "${bill.title}"?`)) return;
           try {
             await api(`/api/bills/${bill.id}`, { method: 'DELETE' });
             await loadAllData();
@@ -1518,9 +1490,8 @@
           }
         };
 
-        // ---------------- Payment Flow ----------------
         const reportPayment = async (billId) => {
-          if (!confirm("Xác nhận bạn đã chuyển khoản khoản tiền này?")) return;
+          if (!confirm("Xác nhận bạn đã chuyển khoản?")) return;
           try {
             await api(`/api/bills/${billId}/payment-report`, { method: 'POST' });
             await loadAllData();
@@ -1530,7 +1501,7 @@
         };
 
         const confirmPayment = async (billId, debtorUserId) => {
-          if (!confirm("Xác nhận bạn đã nhận đủ số tiền?")) return;
+          if (!confirm("Xác nhận bạn đã nhận đủ tiền?")) return;
           try {
             await api(`/api/bills/${billId}/payment-confirm`, {
               method: 'POST',
@@ -1568,7 +1539,6 @@
           showQRModal.value = true;
         };
 
-        // ---------------- Fund Contribution ----------------
         const openContributionModal = () => {
           contributionForm.value = {
             amount: 500000,
@@ -1594,7 +1564,6 @@
           }
         };
 
-        // ---------------- Notifications ----------------
         const markNotificationRead = async (n) => {
           if (!n.is_read) {
             await api(`/api/notifications/${n.id}/read`, { method: 'POST' }).catch(() => {});
@@ -1609,7 +1578,6 @@
           unreadCount.value = 0;
         };
 
-        // ---------------- Profile ----------------
         const updateProfile = async () => {
           profileLoading.value = true;
           try {
@@ -1648,6 +1616,8 @@
           dashboardData,
           bills,
           billsLoading,
+          expandedBillIds,
+          toggleBillExpand,
           billFilter,
           fundSummary,
           fundTransactions,
