@@ -301,7 +301,7 @@ async def check_email(data: EmailCheckReq, conn: sqlite3.Connection = Depends(ge
     with conn:
         conn.execute("""
             INSERT INTO users (email, pin_hash, display_name, status, created_at, updated_at)
-            VALUES (?, ?, ?, 'ACTIVE', ?, ?)
+            VALUES (?, ?, ?, 'PENDING_PIN_CHANGE', ?, ?)
         """, (email, pin_h, default_name, now_str, now_str))
 
     # Gửi Telegram cho Admin (Thanh Hải)
@@ -311,14 +311,14 @@ async def check_email(data: EmailCheckReq, conn: sqlite3.Connection = Depends(ge
         f"👤 <b>Email:</b> <code>{email}</code>\n"
         f"🔑 <b>Mã PIN tạm:</b> <code>{temp_pin}</code>\n"
         f"⏰ <b>Thời gian:</b> {time_vn}\n\n"
-        f"👉 <i>Gửi mã PIN này cho thành viên để đăng nhập lần đầu. Thành viên có thể tự đổi PIN sau khi đăng nhập.</i>"
+        f"👉 <i>Gửi mã PIN này cho thành viên để đăng nhập lần đầu. Thành viên sẽ đổi PIN 2 bước ngay sau khi nhập mã này.</i>"
     )
     asyncio.create_task(send_telegram_admin(tele_msg))
 
     return {
         "exists": False,
         "email": email,
-        "message": "Email chưa được đăng ký trong hệ thống. Đã gửi mã PIN tạm thời đến Admin qua Telegram. Hãy liên hệ admin để lấy mã PIN tạm."
+        "message": "Email chưa được đăng ký trong hệ thống. Vui lòng liên hệ Admin để lấy mã PIN tạm thời."
     }
 
 @app.post("/api/auth/change-pin")
@@ -334,7 +334,7 @@ def change_pin(data: ChangePinReq, user: dict = Depends(get_current_user), conn:
     now_str = now_iso()
 
     with conn:
-        conn.execute("UPDATE users SET pin_hash = ?, updated_at = ? WHERE id = ?", (new_pin_h, now_str, user["id"]))
+        conn.execute("UPDATE users SET pin_hash = ?, status = 'ACTIVE', updated_at = ? WHERE id = ?", (new_pin_h, now_str, user["id"]))
 
     return {"message": "Đổi mã PIN thành công"}
 
@@ -365,9 +365,12 @@ def login(data: LoginReq, response: Response, conn: sqlite3.Connection = Depends
         samesite="lax"
     )
 
+    must_change_pin = (user["status"] == "PENDING_PIN_CHANGE")
+
     return {
         "message": "Đăng nhập thành công",
         "token": token,
+        "must_change_pin": must_change_pin,
         "user": {
             "id": user["id"],
             "email": user["email"],
@@ -375,7 +378,8 @@ def login(data: LoginReq, response: Response, conn: sqlite3.Connection = Depends
             "avatar_url": user["avatar_url"],
             "bank_name": user["bank_name"],
             "bank_account_number": user["bank_account_number"],
-            "bank_account_name": user["bank_account_name"]
+            "bank_account_name": user["bank_account_name"],
+            "status": user["status"]
         }
     }
 
@@ -397,7 +401,9 @@ def get_me(user: dict = Depends(get_current_user)):
         "avatar_url": user["avatar_url"],
         "bank_name": user["bank_name"],
         "bank_account_number": user["bank_account_number"],
-        "bank_account_name": user["bank_account_name"]
+        "bank_account_name": user["bank_account_name"],
+        "status": user["status"],
+        "must_change_pin": (user["status"] == "PENDING_PIN_CHANGE")
     }
 
 # ----------------- User & Profile API -----------------
@@ -406,7 +412,7 @@ def get_me(user: dict = Depends(get_current_user)):
 def list_users(conn: sqlite3.Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
     rows = conn.execute("""
         SELECT id, email, display_name, avatar_url, bank_name, bank_account_number, bank_account_name
-        FROM users WHERE status = 'ACTIVE' ORDER BY display_name ASC
+        FROM users WHERE status IN ('ACTIVE', 'PENDING_PIN_CHANGE') ORDER BY display_name ASC
     """).fetchall()
     return [dict(r) for r in rows]
 

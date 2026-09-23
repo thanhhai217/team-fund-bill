@@ -69,7 +69,7 @@
           </div>
         </div>
 
-        <div v-if="currentUser" class="flex items-center space-x-2">
+        <div v-if="currentUser && !mustChangePin" class="flex items-center space-x-2">
           <!-- Notification Bell -->
           <button @click="currentTab = 'notifications'"
             class="relative p-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition active:scale-90">
@@ -102,7 +102,7 @@
       </div>
 
       <!-- DESKTOP NAVBAR TABS -->
-      <div v-if="currentUser" class="hidden md:flex max-w-6xl mx-auto mt-2 border-t border-slate-100 pt-2 space-x-1">
+      <div v-if="currentUser && !mustChangePin" class="hidden md:flex max-w-6xl mx-auto mt-2 border-t border-slate-100 pt-2 space-x-1">
         <button v-for="tab in tabs" :key="tab.id" @click="currentTab = tab.id"
           :class="['px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center space-x-1.5',
                   currentTab === tab.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100']">
@@ -118,8 +118,8 @@
     <!-- MAIN BODY -->
     <main class="flex-1 max-w-6xl w-full mx-auto px-3.5 sm:px-4 py-4 sm:py-6">
 
-      <!-- ================== AUTH VIEW ================== -->
-      <div v-if="!currentUser" class="max-w-md mx-auto my-6 sm:my-10">
+      <!-- ================== AUTH / SET PIN VIEW ================== -->
+      <div v-if="!currentUser || mustChangePin" class="max-w-md mx-auto my-6 sm:my-10">
         <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
           <div class="text-center mb-6">
             <div class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-2xl mx-auto mb-3 shadow-lg shadow-indigo-300">
@@ -156,10 +156,10 @@
             <div v-if="isNewUser" class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs space-y-1">
               <p class="font-bold flex items-center space-x-1">
                 <span>⚠️</span>
-                <span>Email chưa được đăng ký trong hệ thống</span>
+                <span>Email chưa được đăng ký</span>
               </p>
               <p class="text-[11px] text-amber-800 leading-snug">
-                Hệ thống đã tự động gửi <b>mã PIN tạm 4 số</b> đến Admin qua Telegram. Hãy liên hệ Admin để lấy mã PIN tạm và nhập vào bên dưới để đăng nhập:
+                Email này chưa có trong hệ thống. Vui lòng liên hệ Admin để lấy mã PIN tạm thời và nhập vào ô bên dưới:
               </p>
             </div>
 
@@ -169,14 +169,50 @@
               </label>
               <input v-model="authPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="••••"
                 class="w-full px-4 py-3 text-center text-3xl tracking-[0.5em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-slate-800 transition" />
-              <p v-if="isNewUser" class="text-[11px] text-slate-500 mt-1">
-                Sau khi đăng nhập, bạn có thể tự đổi sang mã PIN cá nhân trong trang Cá nhân.
-              </p>
             </div>
 
             <button :disabled="authLoading || !authPin || authPin.length !== 4" type="submit"
               class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition active:scale-[0.98] disabled:opacity-50 text-sm">
-              {{ authLoading ? 'Đang xác thực...' : (isNewUser ? 'Đăng nhập bằng PIN tạm' : 'Đăng nhập') }}
+              {{ authLoading ? 'Đang xác thực...' : (isNewUser ? 'Tiếp tục' : 'Đăng nhập') }}
+            </button>
+          </form>
+
+          <!-- Step 3: Set New PIN after temporary PIN (Confirm 2 times on 1 screen) -->
+          <form v-if="authStep === 'set_new_pin'" @submit.prevent="handleConfirmNewPin" class="space-y-4">
+            <div class="text-left pb-2 border-b border-slate-100">
+              <span class="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded uppercase tracking-wider">
+                Đăng nhập lần đầu
+              </span>
+              <h3 class="text-base font-black text-slate-800 mt-1.5">Thiết lập mã PIN cá nhân</h3>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                Vui lòng nhập mã PIN 4 số của riêng bạn 2 lần để bảo mật tài khoản.
+              </p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Mã PIN mới (4 số)</label>
+              <input v-model="newPin1" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="••••"
+                class="w-full px-4 py-2.5 text-center text-3xl tracking-[0.5em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-slate-800 transition" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Nhập lại mã PIN mới (xác nhận)</label>
+              <input v-model="newPin2" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="••••"
+                class="w-full px-4 py-2.5 text-center text-3xl tracking-[0.5em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-slate-800 transition" />
+            </div>
+
+            <div v-if="newPin2.length === 4">
+              <p v-if="newPin1 === newPin2" class="text-xs text-emerald-600 font-bold flex items-center space-x-1">
+                <span>✓</span><span>Mã PIN trùng khớp</span>
+              </p>
+              <p v-else class="text-xs text-rose-600 font-bold flex items-center space-x-1">
+                <span>✕</span><span>Mã PIN xác nhận không khớp</span>
+              </p>
+            </div>
+
+            <button :disabled="pinSubmitLoading || !newPin1 || newPin1.length !== 4 || newPin1 !== newPin2" type="submit"
+              class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition active:scale-[0.98] disabled:opacity-50 text-sm">
+              {{ pinSubmitLoading ? 'Đang cập nhật PIN...' : 'Xác nhận & Vào trang chủ' }}
             </button>
           </form>
 
@@ -791,7 +827,7 @@
     </main>
 
     <!-- ================== MOBILE BOTTOM NAVIGATION ================== -->
-    <nav v-if="currentUser" class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-1 pt-1.5 safe-nav-pb shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+    <nav v-if="currentUser && !mustChangePin" class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-1 pt-1.5 safe-nav-pb shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
       <div class="flex items-center justify-around">
         <button v-for="tab in tabs" :key="tab.id" @click="currentTab = tab.id"
           :class="['flex flex-col items-center py-1 px-2.5 rounded-xl transition relative active:scale-90',
@@ -1074,8 +1110,12 @@
         const authEmail = ref('');
         const authPin = ref('');
         const isNewUser = ref(false);
+        const mustChangePin = ref(false);
         const authLoading = ref(false);
         const authError = ref('');
+        const newPin1 = ref('');
+        const newPin2 = ref('');
+        const pinSubmitLoading = ref(false);
         const changePinVal = ref('');
         const changePinLoading = ref(false);
         const changePinMsg = ref('');
@@ -1240,6 +1280,14 @@
             const me = await api('/api/auth/me');
             currentUser.value = me;
             profileForm.value = { ...me };
+            if (me.must_change_pin) {
+              mustChangePin.value = true;
+              authStep.value = 'set_new_pin';
+              newPin1.value = '';
+              newPin2.value = '';
+              return;
+            }
+            mustChangePin.value = false;
             await loadAllData();
           } catch (e) {
             currentUser.value = null;
@@ -1274,11 +1322,46 @@
             });
             currentUser.value = res.user;
             profileForm.value = { ...res.user };
+
+            if (res.must_change_pin) {
+              mustChangePin.value = true;
+              authStep.value = 'set_new_pin';
+              newPin1.value = '';
+              newPin2.value = '';
+              return;
+            }
+
+            mustChangePin.value = false;
+            authStep.value = 'email';
             await loadAllData();
           } catch (err) {
             authError.value = err.message;
           } finally {
             authLoading.value = false;
+          }
+        };
+
+        const handleConfirmNewPin = async () => {
+          if (!newPin1.value || newPin1.value.length !== 4) return;
+          if (newPin1.value !== newPin2.value) {
+            authError.value = "Mã PIN xác nhận không trùng khớp.";
+            return;
+          }
+          pinSubmitLoading.value = true;
+          authError.value = '';
+          try {
+            await api('/api/auth/change-pin', {
+              method: 'POST',
+              body: { new_pin: newPin1.value }
+            });
+            if (currentUser.value) currentUser.value.status = 'ACTIVE';
+            mustChangePin.value = false;
+            authStep.value = 'email';
+            await loadAllData();
+          } catch (err) {
+            authError.value = err.message;
+          } finally {
+            pinSubmitLoading.value = false;
           }
         };
 
@@ -1306,6 +1389,7 @@
         const logout = async () => {
           await api('/api/auth/logout', { method: 'POST' }).catch(() => {});
           currentUser.value = null;
+          mustChangePin.value = false;
           authStep.value = 'email';
           authEmail.value = '';
           authPin.value = '';
@@ -1617,8 +1701,13 @@
           authLoading,
           authError,
           isNewUser,
+          mustChangePin,
+          newPin1,
+          newPin2,
+          pinSubmitLoading,
           handleEmailSubmit,
           handleLogin,
+          handleConfirmNewPin,
           changePinVal,
           changePinLoading,
           changePinMsg,
