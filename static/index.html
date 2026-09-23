@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Fund & Bill Split</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    [v-cloak] { display: none; }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#4f46e5',
+              600: '#4338ca',
+              700: '#3730a3',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen antialiased flex flex-col selection:bg-indigo-500 selection:text-white pb-20 md:pb-6">
+  <div id="app" v-cloak class="flex flex-col min-h-screen">
+
+    <!-- TOP HEADER -->
+    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 px-4 py-3 shadow-sm">
+      <div class="max-w-6xl mx-auto flex items-center justify-between">
+        <div class="flex items-center space-x-3 cursor-pointer" @click="currentTab = 'dashboard'">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-200 font-bold text-lg">
+            💸
+          </div>
+          <div>
+            <h1 class="text-base font-bold text-slate-900 leading-tight">Team Fund & Bill</h1>
+            <p class="text-xs text-slate-500 font-medium hidden sm:block">Quản lý Quỹ & Chia tiền nội bộ</p>
+          </div>
+        </div>
+
+        <div v-if="currentUser" class="flex items-center space-x-3">
+          <!-- Notification Bell -->
+          <button @click="currentTab = 'notifications'" class="relative p-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            <span v-if="unreadCount > 0" class="absolute top-1.5 right-1.5 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
+              {{ unreadCount > 9 ? '9+' : unreadCount }}
+            </span>
+          </button>
+
+          <!-- User Chip / Profile -->
+          <div @click="currentTab = 'profile'" class="flex items-center space-x-2 pl-2 pr-3 py-1 bg-slate-100 hover:bg-slate-200/80 rounded-full cursor-pointer transition">
+            <div class="w-7 h-7 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center overflow-hidden">
+              <img v-if="currentUser.avatar_url" :src="currentUser.avatar_url" class="w-full h-full object-cover" />
+              <span v-else>{{ initials(currentUser.display_name) }}</span>
+            </div>
+            <span class="text-xs font-semibold text-slate-700 hidden sm:inline max-w-[120px] truncate">{{ currentUser.display_name }}</span>
+          </div>
+
+          <!-- Logout -->
+          <button @click="logout" title="Đăng xuất" class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- DESKTOP NAVBAR TABS -->
+      <div v-if="currentUser" class="hidden md:flex max-w-6xl mx-auto mt-2 border-t border-slate-100 pt-2 space-x-1">
+        <button v-for="tab in tabs" :key="tab.id" @click="currentTab = tab.id"
+          :class="['px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center space-x-1.5',
+                  currentTab === tab.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100']">
+          <span>{{ tab.icon }}</span>
+          <span>{{ tab.name }}</span>
+          <span v-if="tab.id === 'notifications' && unreadCount > 0" class="ml-1 px-1.5 py-0.2 bg-rose-500 text-white text-[10px] rounded-full">
+            {{ unreadCount }}
+          </span>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN BODY -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
+
+      <!-- ================== AUTH VIEW (When not logged in) ================== -->
+      <div v-if="!currentUser" class="max-w-md mx-auto my-8">
+        <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
+          <div class="text-center mb-6">
+            <div class="w-16 h-16 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-3xl mx-auto mb-3 shadow-lg shadow-indigo-300">
+              ⚡
+            </div>
+            <h2 class="text-2xl font-black text-slate-800 tracking-tight">Team Fund & Bill</h2>
+            <p class="text-sm text-slate-500 mt-1">Đăng nhập bằng Email & Mã PIN 4 số</p>
+          </div>
+
+          <!-- Step 1: Input Email -->
+          <form v-if="authStep === 'email'" @submit.prevent="handleEmailSubmit" class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Email cơ quan / cá nhân</label>
+              <input v-model="authEmail" type="email" required placeholder="nhanvien@vib.com"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-slate-800 font-medium transition" />
+            </div>
+            <button :disabled="authLoading" type="submit"
+              class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition active:scale-[0.98] disabled:opacity-50">
+              {{ authLoading ? 'Đang kiểm tra...' : 'Tiếp tục' }}
+            </button>
+          </form>
+
+          <!-- Step 2A: Login with PIN -->
+          <form v-if="authStep === 'login'" @submit.prevent="handleLogin" class="space-y-4">
+            <div class="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 flex items-center justify-between">
+              <div>
+                <p class="text-xs text-slate-500">Đăng nhập tài khoản</p>
+                <p class="text-sm font-bold text-indigo-900">{{ authEmail }}</p>
+              </div>
+              <button type="button" @click="authStep = 'email'" class="text-xs text-indigo-600 font-semibold hover:underline">Đổi email</button>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Mã PIN (4 chữ số)</label>
+              <input v-model="authPin" type="password" maxlength="4" pattern="[0-9]{4}" required placeholder="••••"
+                class="w-full px-4 py-3 text-center text-2xl tracking-[0.6em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-slate-800 transition" />
+            </div>
+
+            <button :disabled="authLoading" type="submit"
+              class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition active:scale-[0.98] disabled:opacity-50">
+              {{ authLoading ? 'Đang đăng nhập...' : 'Đăng nhập' }}
+            </button>
+
+            <div class="text-center pt-2">
+              <button type="button" @click="startResetPin" class="text-xs text-slate-500 hover:text-indigo-600 font-medium transition">
+                Quên mã PIN? Khôi phục qua Email OTP
+              </button>
+            </div>
+          </form>
+
+          <!-- Step 2B: Register or Reset PIN with OTP -->
+          <form v-if="authStep === 'otp_pin'" @submit.prevent="handleOtpAndSetPin" class="space-y-4">
+            <div class="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs text-slate-500">{{ authPurpose === 'REGISTER' ? 'Đăng ký thành viên mới' : 'Đặt lại mã PIN' }}</p>
+                  <p class="text-sm font-bold text-indigo-900">{{ authEmail }}</p>
+                </div>
+                <button type="button" @click="authStep = 'email'" class="text-xs text-indigo-600 font-semibold hover:underline">Đổi</button>
+              </div>
+              <div v-if="devOtpCode" class="mt-2 text-xs bg-emerald-100/80 text-emerald-800 p-2 rounded-lg font-mono">
+                ⚡ Mã OTP: <b class="text-sm">{{ devOtpCode }}</b>
+                <button type="button" @click="authOtp = devOtpCode" class="ml-2 underline text-emerald-900">Điền nhanh</button>
+              </div>
+            </div>
+
+            <div v-if="authPurpose === 'REGISTER'">
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Tên hiển thị của bạn</label>
+              <input v-model="authDisplayName" type="text" required placeholder="Hải Thành, Minh Nguyễn..."
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-slate-800 font-medium transition" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Mã OTP từ Email</label>
+              <input v-model="authOtp" type="text" maxlength="6" required placeholder="123456"
+                class="w-full px-4 py-2.5 text-center text-xl tracking-[0.4em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-slate-800 transition" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Tạo mã PIN 4 số</label>
+              <input v-model="authPin" type="password" maxlength="4" pattern="[0-9]{4}" required placeholder="••••"
+                class="w-full px-4 py-2.5 text-center text-2xl tracking-[0.6em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-slate-800 transition" />
+              <p class="text-[11px] text-slate-400 mt-1">Dùng để đăng nhập nhanh sau này.</p>
+            </div>
+
+            <button :disabled="authLoading" type="submit"
+              class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition active:scale-[0.98] disabled:opacity-50">
+              {{ authLoading ? 'Đang xử lý...' : (authPurpose === 'REGISTER' ? 'Hoàn tất & Bắt đầu' : 'Cập nhật PIN mới') }}
+            </button>
+          </form>
+
+          <div v-if="authError" class="mt-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center space-x-2">
+            <span>⚠️</span>
+            <span>{{ authError }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================== LOGGED IN MAIN APP ================== -->
+      <div v-else>
+
+        <!-- 1. DASHBOARD VIEW -->
+        <div v-if="currentTab === 'dashboard'" class="space-y-6">
+
+          <!-- STATS CARDS -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <!-- Fund Balance -->
+            <div class="bg-gradient-to-br from-indigo-900 to-indigo-700 p-5 rounded-2xl text-white shadow-lg shadow-indigo-200/50 flex flex-col justify-between">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold tracking-wider uppercase text-indigo-200">Số dư Quỹ nhóm</span>
+                <span class="text-xl">💰</span>
+              </div>
+              <div class="my-3">
+                <div class="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                  {{ formatVND(dashboardData.fund_balance) }}
+                </div>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-indigo-500/30 text-xs">
+                <span class="text-indigo-200">Ledger nội bộ</span>
+                <button @click="openContributionModal" class="px-2.5 py-1 bg-white/20 hover:bg-white/30 rounded-lg font-bold transition">
+                  + Đóng quỹ
+                </button>
+              </div>
+            </div>
+
+            <!-- I Owe -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold tracking-wider uppercase text-slate-500">Tôi đang nợ</span>
+                <span class="text-xl">💳</span>
+              </div>
+              <div class="my-3">
+                <div class="text-2xl sm:text-3xl font-extrabold text-rose-600 tracking-tight">
+                  {{ formatVND(dashboardData.total_i_owe) }}
+                </div>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                <span class="text-slate-500">Cần chuyển khoản</span>
+                <button @click="currentTab = 'debts'; debtSubTab = 'i_owe'" class="text-indigo-600 font-bold hover:underline">
+                  Xem chi tiết →
+                </button>
+              </div>
+            </div>
+
+            <!-- Others Owe Me -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold tracking-wider uppercase text-slate-500">Người khác nợ tôi</span>
+                <span class="text-xl">📥</span>
+              </div>
+              <div class="my-3">
+                <div class="text-2xl sm:text-3xl font-extrabold text-emerald-600 tracking-tight">
+                  {{ formatVND(dashboardData.total_others_owe) }}
+                </div>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                <span class="text-slate-500">Chờ thu hồi</span>
+                <button @click="currentTab = 'debts'; debtSubTab = 'others_owe'" class="text-indigo-600 font-bold hover:underline">
+                  Xác nhận nhận →
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- QUICK ACTIONS BANNER -->
+          <div class="flex flex-wrap gap-3">
+            <button @click="openCreateBillModal"
+              class="flex-1 min-w-[160px] py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-100 transition flex items-center justify-center space-x-2">
+              <span class="text-lg">🧾</span>
+              <span>+ Tạo Hoá Đơn Mới</span>
+            </button>
+            <button @click="openContributionModal"
+              class="flex-1 min-w-[160px] py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md shadow-emerald-100 transition flex items-center justify-center space-x-2">
+              <span class="text-lg">💵</span>
+              <span>+ Tự Ghi Nhận Đóng Quỹ</span>
+            </button>
+          </div>
+
+          <!-- RECENT BILLS & FUND ACTIVITY -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- Recent Bills -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-slate-800 text-base flex items-center space-x-2">
+                  <span>🧾</span>
+                  <span>Hoá đơn gần đây</span>
+                </h3>
+                <button @click="currentTab = 'bills'" class="text-xs font-bold text-indigo-600 hover:underline">Xem tất cả</button>
+              </div>
+
+              <div v-if="dashboardData.recent_bills.length === 0" class="text-center py-8 text-slate-400 text-sm">
+                Chưa có hoá đơn nào phát sinh
+              </div>
+              <div v-else class="space-y-3">
+                <div v-for="b in dashboardData.recent_bills" :key="b.id"
+                  @click="openBillDetail(b.id)"
+                  class="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl cursor-pointer transition flex items-center justify-between border border-slate-100">
+                  <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 rounded-lg bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center text-sm">
+                      {{ categoryEmoji(b.category) }}
+                    </div>
+                    <div>
+                      <h4 class="text-sm font-bold text-slate-800 line-clamp-1">{{ b.title }}</h4>
+                      <p class="text-xs text-slate-500">{{ b.expense_date }} • Chi bởi: {{ b.payer_name }}</p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-sm font-extrabold text-slate-900">{{ formatVND(b.total_amount) }}</p>
+                    <span :class="['inline-block text-[10px] font-bold px-2 py-0.5 rounded-full',
+                                  b.source_type === 'PERSONAL' ? 'bg-amber-100 text-amber-800' : 'bg-violet-100 text-violet-800']">
+                      {{ b.source_type === 'PERSONAL' ? 'Cá nhân' : 'Quỹ nhóm' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recent Fund Transactions -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-slate-800 text-base flex items-center space-x-2">
+                  <span>💰</span>
+                  <span>Biến động quỹ gần đây</span>
+                </h3>
+                <button @click="currentTab = 'fund'" class="text-xs font-bold text-indigo-600 hover:underline">Xem tất cả</button>
+              </div>
+
+              <div v-if="dashboardData.recent_fund_transactions.length === 0" class="text-center py-8 text-slate-400 text-sm">
+                Chưa có giao dịch quỹ nào
+              </div>
+              <div v-else class="space-y-3">
+                <div v-for="tx in dashboardData.recent_fund_transactions" :key="tx.id"
+                  class="p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100">
+                  <div class="flex items-center space-x-3">
+                    <div :class="['w-9 h-9 rounded-lg font-bold flex items-center justify-center text-sm',
+                                 tx.type === 'CONTRIBUTION' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700']">
+                      {{ tx.type === 'CONTRIBUTION' ? '➕' : '➖' }}
+                    </div>
+                    <div>
+                      <h4 class="text-sm font-bold text-slate-800 line-clamp-1">{{ tx.note || (tx.type === 'CONTRIBUTION' ? 'Đóng quỹ' : 'Chi quỹ') }}</h4>
+                      <p class="text-xs text-slate-500">{{ tx.transaction_date }} • {{ tx.member_name || 'Hệ thống' }}</p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <p :class="['text-sm font-extrabold', tx.type === 'CONTRIBUTION' ? 'text-emerald-600' : 'text-rose-600']">
+                      {{ tx.type === 'CONTRIBUTION' ? '+' : '-' }}{{ formatVND(tx.amount) }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- 2. BILLS VIEW -->
+        <div v-if="currentTab === 'bills'" class="space-y-5">
+          <!-- Filters & Header -->
+          <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2 flex-1">
+              <!-- Search -->
+              <div class="relative flex-1 min-w-[200px]">
+                <input v-model="billFilter.search" @input="loadBills" type="text" placeholder="Tìm tên bill hoặc ghi chú..."
+                  class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:border-indigo-500 outline-none" />
+                <span class="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
+              </div>
+              <!-- Category Filter -->
+              <select v-model="billFilter.category" @change="loadBills" class="py-2 px-3 text-xs rounded-xl border border-slate-200 bg-white font-medium outline-none">
+                <option value="">Tất cả danh mục</option>
+                <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+              </select>
+              <!-- Source Filter -->
+              <select v-model="billFilter.source_type" @change="loadBills" class="py-2 px-3 text-xs rounded-xl border border-slate-200 bg-white font-medium outline-none">
+                <option value="">Tất cả nguồn tiền</option>
+                <option value="PERSONAL">Tiền cá nhân</option>
+                <option value="GROUP_FUND">Quỹ nhóm</option>
+              </select>
+            </div>
+
+            <button @click="openCreateBillModal" class="py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow transition flex items-center justify-center space-x-1">
+              <span>+</span>
+              <span>Tạo Hoá Đơn</span>
+            </button>
+          </div>
+
+          <!-- Bills List -->
+          <div v-if="billsLoading" class="text-center py-12 text-slate-400 text-sm">Đang tải danh sách...</div>
+          <div v-else-if="bills.length === 0" class="bg-white rounded-2xl p-12 text-center border border-slate-200 text-slate-400">
+            <span class="text-4xl block mb-2">🧾</span>
+            Không tìm thấy hoá đơn nào.
+          </div>
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div v-for="b in bills" :key="b.id" class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex flex-col justify-between hover:shadow-md transition">
+              <div>
+                <div class="flex items-start justify-between gap-2 mb-2">
+                  <div class="flex items-center space-x-2">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm font-bold">
+                      {{ categoryEmoji(b.category) }}
+                    </span>
+                    <div>
+                      <h3 class="font-bold text-slate-800 text-sm line-clamp-1">{{ b.title }}</h3>
+                      <p class="text-[11px] text-slate-500">{{ b.expense_date }} • Chi bởi: <b>{{ b.payer_name }}</b></p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-base font-extrabold text-slate-900 block">{{ formatVND(b.total_amount) }}</span>
+                    <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full',
+                                  b.source_type === 'PERSONAL' ? 'bg-amber-100 text-amber-800' : 'bg-violet-100 text-violet-800']">
+                      {{ b.source_type === 'PERSONAL' ? 'Cá nhân chi' : 'Quỹ nhóm chi' }}
+                    </span>
+                  </div>
+                </div>
+
+                <p v-if="b.description" class="text-xs text-slate-600 mb-3 bg-slate-50 p-2 rounded-lg italic">
+                  "{{ b.description }}"
+                </p>
+
+                <!-- Participants chips -->
+                <div class="mt-3 pt-3 border-t border-slate-100">
+                  <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Thành viên ({{ b.participants.length }} người)
+                  </p>
+                  <div class="flex flex-wrap gap-1.5">
+                    <div v-for="p in b.participants" :key="p.id"
+                      class="px-2 py-1 bg-slate-100 rounded-lg text-xs flex items-center space-x-1.5">
+                      <span class="font-semibold text-slate-700">{{ p.display_name }}</span>
+                      <span v-if="b.source_type === 'PERSONAL'" class="font-mono text-[11px] text-slate-500">
+                        ({{ formatVND(p.share_amount) }})
+                      </span>
+                      <span v-if="b.source_type === 'PERSONAL'"
+                        :class="['text-[9px] font-bold px-1.5 py-0.2 rounded',
+                                p.payment_status === 'PAID' ? 'bg-emerald-100 text-emerald-800' :
+                                p.payment_status === 'PAYMENT_REPORTED' ? 'bg-blue-100 text-blue-800' :
+                                'bg-slate-200 text-slate-600']">
+                        {{ p.payment_status === 'PAID' ? '✓ Đã trả' :
+                           p.payment_status === 'PAYMENT_REPORTED' ? '⏳ Đã báo' : 'Chưa' }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Footer Actions -->
+              <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                <div class="flex items-center space-x-2">
+                  <button v-if="b.created_by === currentUser.id" @click="openEditBillModal(b)"
+                    class="text-indigo-600 font-semibold hover:underline">
+                    Sửa
+                  </button>
+                  <button v-if="b.created_by === currentUser.id" @click="confirmDeleteBill(b)"
+                    class="text-rose-600 font-semibold hover:underline">
+                    Xoá
+                  </button>
+                </div>
+
+                <!-- Debtor Action -->
+                <div v-if="b.source_type === 'PERSONAL'" class="flex items-center space-x-2">
+                  <template v-for="p in b.participants">
+                    <div v-if="p.user_id === currentUser.id && p.payment_status === 'UNPAID' && b.payer_user_id !== currentUser.id" :key="p.id">
+                      <button @click="showVietQR(b)" class="px-2.5 py-1 bg-violet-50 text-violet-700 hover:bg-violet-100 font-bold rounded-lg mr-1 transition">
+                        QR Chuyển
+                      </button>
+                      <button @click="reportPayment(b.id)" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition">
+                        Tôi đã trả
+                      </button>
+                    </div>
+                    <div v-else-if="p.user_id === currentUser.id && p.payment_status === 'PAYMENT_REPORTED'" :key="'rep_'+p.id">
+                      <span class="text-blue-600 font-bold">⏳ Đang chờ xác nhận</span>
+                    </div>
+                  </template>
+
+                  <!-- Payer Confirmation Action -->
+                  <div v-if="b.payer_user_id === currentUser.id">
+                    <button @click="currentTab = 'debts'; debtSubTab = 'others_owe'" class="text-indigo-600 font-bold hover:underline">
+                      Kiểm tra nợ →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. GROUP FUND VIEW -->
+        <div v-if="currentTab === 'fund'" class="space-y-6">
+          <!-- Balance & Actions -->
+          <div class="bg-gradient-to-r from-slate-900 to-indigo-950 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <p class="text-xs uppercase tracking-wider text-indigo-300 font-bold">Quỹ Nhóm Hiện Tại</p>
+              <h2 class="text-3xl sm:text-4xl font-black mt-1">{{ formatVND(fundSummary.balance) }}</h2>
+              <p class="text-xs text-slate-400 mt-2">
+                Công thức: Tổng đóng quỹ - Tổng hoá đơn chi từ quỹ
+              </p>
+            </div>
+            <div class="flex items-center space-x-4">
+              <div class="px-4 py-3 bg-white/10 rounded-2xl text-center">
+                <span class="text-[11px] text-emerald-400 font-bold block">TỔNG THU</span>
+                <span class="text-lg font-extrabold text-white">{{ formatVND(fundSummary.total_in) }}</span>
+              </div>
+              <div class="px-4 py-3 bg-white/10 rounded-2xl text-center">
+                <span class="text-[11px] text-rose-400 font-bold block">TỔNG CHI</span>
+                <span class="text-lg font-extrabold text-white">{{ formatVND(fundSummary.total_out) }}</span>
+              </div>
+              <button @click="openContributionModal" class="py-3 px-5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-2xl shadow-lg transition">
+                + Đóng Quỹ
+              </button>
+            </div>
+          </div>
+
+          <!-- Members Contributions Leaderboard -->
+          <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
+            <h3 class="font-bold text-slate-800 text-sm uppercase tracking-wider mb-4 flex items-center space-x-2">
+              <span>🏆</span>
+              <span>Tổng kết đóng góp theo thành viên</span>
+            </h3>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div v-for="m in fundSummary.members" :key="m.id"
+                class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">
+                  <img v-if="m.avatar_url" :src="m.avatar_url" class="w-full h-full rounded-full object-cover" />
+                  <span v-else>{{ initials(m.display_name) }}</span>
+                </div>
+                <div>
+                  <h4 class="text-xs font-bold text-slate-800 truncate">{{ m.display_name }}</h4>
+                  <p class="text-xs font-extrabold text-emerald-600">{{ formatVND(m.total_contributed) }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Full Fund Ledger -->
+          <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold text-slate-800 text-base flex items-center space-x-2">
+                <span>📑</span>
+                <span>Lịch sử giao dịch quỹ</span>
+              </h3>
+              <select v-model="fundTxFilter" class="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none font-medium">
+                <option value="">Tất cả giao dịch</option>
+                <option value="CONTRIBUTION">Tiền vào (Đóng quỹ)</option>
+                <option value="EXPENSE">Tiền ra (Chi tiêu)</option>
+              </select>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="border-b border-slate-100 text-slate-400 uppercase font-bold text-[10px]">
+                    <th class="py-2.5 px-3">Ngày</th>
+                    <th class="py-2.5 px-3">Loại</th>
+                    <th class="py-2.5 px-3">Thành viên / Nguồn</th>
+                    <th class="py-2.5 px-3">Nội dung</th>
+                    <th class="py-2.5 px-3 text-right">Số tiền</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <tr v-for="tx in filteredFundTransactions" :key="tx.id" class="hover:bg-slate-50/80">
+                    <td class="py-3 px-3 text-slate-500 whitespace-nowrap">{{ tx.transaction_date }}</td>
+                    <td class="py-3 px-3 whitespace-nowrap">
+                      <span :class="['px-2 py-0.5 rounded-md font-bold text-[10px]',
+                                    tx.type === 'CONTRIBUTION' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800']">
+                        {{ tx.type === 'CONTRIBUTION' ? 'TIỀN VÀO' : 'TIỀN RA' }}
+                      </span>
+                    </td>
+                    <td class="py-3 px-3 font-semibold text-slate-800 whitespace-nowrap">{{ tx.member_name || 'Quỹ nhóm' }}</td>
+                    <td class="py-3 px-3 text-slate-600">{{ tx.note || (tx.bill_title ? 'Chi cho: ' + tx.bill_title : '-') }}</td>
+                    <td class="py-3 px-3 text-right font-extrabold whitespace-nowrap"
+                        :class="tx.type === 'CONTRIBUTION' ? 'text-emerald-600' : 'text-rose-600'">
+                      {{ tx.type === 'CONTRIBUTION' ? '+' : '-' }}{{ formatVND(tx.amount) }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. DEBTS VIEW -->
+        <div v-if="currentTab === 'debts'" class="space-y-5">
+          <!-- Sub-tabs -->
+          <div class="flex border-b border-slate-200">
+            <button @click="debtSubTab = 'i_owe'"
+              :class="['py-3 px-5 font-bold text-sm border-b-2 transition flex items-center space-x-2',
+                      debtSubTab === 'i_owe' ? 'border-rose-600 text-rose-600' : 'border-transparent text-slate-500 hover:text-slate-800']">
+              <span>💳</span>
+              <span>Tôi cần trả</span>
+              <span class="px-2 py-0.5 bg-rose-100 text-rose-800 text-xs rounded-full font-extrabold">
+                {{ debtsData.i_owe.length }}
+              </span>
+            </button>
+            <button @click="debtSubTab = 'others_owe'"
+              :class="['py-3 px-5 font-bold text-sm border-b-2 transition flex items-center space-x-2',
+                      debtSubTab === 'others_owe' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-800']">
+              <span>📥</span>
+              <span>Người khác nợ tôi</span>
+              <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-xs rounded-full font-extrabold">
+                {{ debtsData.others_owe.length }}
+              </span>
+            </button>
+          </div>
+
+          <!-- Sub-tab 1: I OWE -->
+          <div v-if="debtSubTab === 'i_owe'">
+            <div v-if="debtsData.i_owe.length === 0" class="bg-white rounded-2xl p-12 text-center border border-slate-200 text-slate-400">
+              <span class="text-4xl block mb-2">🎉</span>
+              Tuyệt vời! Bạn không còn khoản nợ nào cần trả.
+            </div>
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div v-for="d in debtsData.i_owe" :key="d.participant_record_id"
+                class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                <div>
+                  <div class="flex items-start justify-between">
+                    <div>
+                      <h4 class="font-bold text-slate-800 text-sm">{{ d.bill_title }}</h4>
+                      <p class="text-xs text-slate-500">{{ d.expense_date }}</p>
+                    </div>
+                    <span class="text-base font-extrabold text-rose-600">{{ formatVND(d.share_amount) }}</span>
+                  </div>
+
+                  <!-- Creditor Details -->
+                  <div class="my-4 p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                    <div>
+                      <p class="text-[11px] text-slate-400 font-bold uppercase">Người nhận tiền</p>
+                      <p class="text-xs font-bold text-slate-800">{{ d.creditor_name }}</p>
+                      <p v-if="d.bank_account_number" class="text-xs text-indigo-700 font-mono font-semibold">
+                        {{ d.bank_name }} • {{ d.bank_account_number }} ({{ d.bank_account_name }})
+                      </p>
+                      <p v-else class="text-[11px] text-amber-600 italic">Chưa cập nhật STK ngân hàng</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+                  <span :class="['text-xs font-bold px-2 py-0.5 rounded-full',
+                                d.payment_status === 'PAYMENT_REPORTED' ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-700']">
+                    {{ d.payment_status === 'PAYMENT_REPORTED' ? '⏳ Đã báo chuyển' : 'Chưa thanh toán' }}
+                  </span>
+
+                  <div class="flex items-center space-x-2">
+                    <button v-if="d.bank_account_number" @click="showDebtVietQR(d)"
+                      class="px-3 py-1.5 bg-violet-100 hover:bg-violet-200 text-violet-800 font-bold rounded-xl text-xs transition">
+                      QR Chuyển
+                    </button>
+                    <button v-if="d.payment_status === 'UNPAID'" @click="reportPayment(d.bill_id)"
+                      class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow transition">
+                      Tôi đã trả
+                    </button>
+                    <span v-else class="text-xs text-blue-600 font-semibold italic">Đang chờ xác nhận</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-tab 2: OTHERS OWE ME -->
+          <div v-if="debtSubTab === 'others_owe'">
+            <div v-if="debtsData.others_owe.length === 0" class="bg-white rounded-2xl p-12 text-center border border-slate-200 text-slate-400">
+              <span class="text-4xl block mb-2">🤝</span>
+              Không có ai đang nợ tiền bạn.
+            </div>
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div v-for="d in debtsData.others_owe" :key="d.participant_record_id"
+                class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                <div>
+                  <div class="flex items-start justify-between">
+                    <div>
+                      <h4 class="font-bold text-slate-800 text-sm">{{ d.bill_title }}</h4>
+                      <p class="text-xs text-slate-500">{{ d.expense_date }}</p>
+                    </div>
+                    <span class="text-base font-extrabold text-emerald-600">{{ formatVND(d.share_amount) }}</span>
+                  </div>
+
+                  <!-- Debtor Details -->
+                  <div class="my-4 p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center space-x-3">
+                    <div class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">
+                      <span>{{ initials(d.debtor_name) }}</span>
+                    </div>
+                    <div>
+                      <p class="text-[11px] text-slate-400 font-bold uppercase">Người nợ</p>
+                      <p class="text-xs font-bold text-slate-800">{{ d.debtor_name }}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+                  <span :class="['text-xs font-bold px-2 py-0.5 rounded-full',
+                                d.payment_status === 'PAYMENT_REPORTED' ? 'bg-blue-100 text-blue-800 animate-pulse' : 'bg-slate-200 text-slate-700']">
+                    {{ d.payment_status === 'PAYMENT_REPORTED' ? '⚡ Đối phương đã báo trả' : 'Chưa thanh toán' }}
+                  </span>
+
+                  <button @click="confirmPayment(d.bill_id, d.debtor_id)"
+                    class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow transition">
+                    Đã nhận tiền
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. NOTIFICATIONS VIEW -->
+        <div v-if="currentTab === 'notifications'" class="space-y-4 max-w-2xl mx-auto">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-slate-800 text-lg">Thông báo của bạn</h3>
+            <button @click="readAllNotifications" class="text-xs font-bold text-indigo-600 hover:underline">
+              Đánh dấu tất cả đã đọc
+            </button>
+          </div>
+
+          <div v-if="notifications.length === 0" class="bg-white rounded-2xl p-12 text-center border border-slate-200 text-slate-400">
+            <span class="text-4xl block mb-2">🔕</span>
+            Bạn không có thông báo nào.
+          </div>
+          <div v-else class="space-y-2">
+            <div v-for="n in notifications" :key="n.id"
+              @click="markNotificationRead(n)"
+              :class="['p-4 rounded-2xl border transition cursor-pointer flex items-start space-x-3',
+                      n.is_read ? 'bg-white border-slate-200/80 text-slate-700' : 'bg-indigo-50/60 border-indigo-100 text-indigo-950 font-medium']">
+              <span class="text-xl mt-0.5">{{ notifIcon(n.type) }}</span>
+              <div class="flex-1">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-xs font-bold">{{ n.title }}</h4>
+                  <span class="text-[10px] text-slate-400">{{ formatDate(n.created_at) }}</span>
+                </div>
+                <p class="text-xs mt-1 text-slate-600">{{ n.message }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. PROFILE VIEW -->
+        <div v-if="currentTab === 'profile'" class="max-w-xl mx-auto">
+          <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+            <div class="flex items-center space-x-4 border-b border-slate-100 pb-6">
+              <div class="w-16 h-16 rounded-full bg-indigo-600 text-white font-black text-xl flex items-center justify-center overflow-hidden shadow-md">
+                <img v-if="profileForm.avatar_url" :src="profileForm.avatar_url" class="w-full h-full object-cover" />
+                <span v-else>{{ initials(profileForm.display_name) }}</span>
+              </div>
+              <div>
+                <h3 class="font-bold text-slate-800 text-lg">{{ currentUser.display_name }}</h3>
+                <p class="text-xs text-slate-500 font-mono">{{ currentUser.email }}</p>
+              </div>
+            </div>
+
+            <form @submit.prevent="updateProfile" class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Tên hiển thị</label>
+                <input v-model="profileForm.display_name" type="text" required
+                  class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-sm font-medium" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Avatar URL (tuỳ chọn)</label>
+                <input v-model="profileForm.avatar_url" type="url" placeholder="https://..."
+                  class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-sm" />
+              </div>
+
+              <div class="border-t border-slate-100 pt-4">
+                <h4 class="font-bold text-slate-800 text-sm mb-3">Thông tin tài khoản nhận tiền (VietQR)</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-[11px] font-bold text-slate-500 mb-1">Ngân hàng</label>
+                    <input v-model="profileForm.bank_name" type="text" placeholder="VIB, VCB, MB..."
+                      class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-xs uppercase" />
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-bold text-slate-500 mb-1">Số tài khoản</label>
+                    <input v-model="profileForm.bank_account_number" type="text" placeholder="000123456789"
+                      class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-xs font-mono" />
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <label class="block text-[11px] font-bold text-slate-500 mb-1">Tên chủ tài khoản</label>
+                  <input v-model="profileForm.bank_account_name" type="text" placeholder="NGUYEN VAN A"
+                    class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-xs uppercase" />
+                </div>
+              </div>
+
+              <!-- Live VietQR Preview if bank info provided -->
+              <div v-if="profileForm.bank_name && profileForm.bank_account_number" class="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                <p class="text-[11px] font-bold text-slate-500 uppercase mb-2">Xem trước mã VietQR của bạn</p>
+                <img :src="'https://img.vietqr.io/image/' + encodeURIComponent(profileForm.bank_name) + '-' + encodeURIComponent(profileForm.bank_account_number) + '-compact2.png'"
+                  alt="VietQR" class="mx-auto max-w-[200px] rounded-xl shadow-sm border border-slate-200" />
+              </div>
+
+              <button :disabled="profileLoading" type="submit"
+                class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition disabled:opacity-50">
+                {{ profileLoading ? 'Đang lưu...' : 'Lưu thay đổi' }}
+              </button>
+            </form>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- ================== MOBILE BOTTOM NAVIGATION ================== -->
+    <nav v-if="currentUser" class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 px-2 py-1 shadow-lg">
+      <div class="flex items-center justify-around">
+        <button v-for="tab in tabs" :key="tab.id" @click="currentTab = tab.id"
+          :class="['flex flex-col items-center py-1 px-2 rounded-lg transition relative',
+                  currentTab === tab.id ? 'text-indigo-600 font-bold' : 'text-slate-400 font-medium']">
+          <span class="text-lg leading-none">{{ tab.icon }}</span>
+          <span class="text-[10px] mt-1">{{ tab.shortName || tab.name }}</span>
+          <span v-if="tab.id === 'notifications' && unreadCount > 0" class="absolute top-0 right-2 w-3.5 h-3.5 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+            {{ unreadCount }}
+          </span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- ================== MODAL: TẠO / SỬA BILL ================== -->
+    <div v-if="showBillModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+      <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 my-8 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 class="font-black text-slate-800 text-lg">
+            {{ billForm.id ? 'Chỉnh sửa Hoá đơn' : 'Tạo Hoá đơn mới' }}
+          </h3>
+          <button @click="showBillModal = false" class="text-slate-400 hover:text-slate-700 text-xl font-bold">✕</button>
+        </div>
+
+        <!-- Warning on Edit -->
+        <div v-if="billForm.id && billForm.hasReportedOrPaid" class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs flex items-start space-x-2">
+          <span>⚠️</span>
+          <span><b>Cảnh báo:</b> Bill này đã có thành viên xác nhận thanh toán. Việc chỉnh sửa sẽ reset trạng thái thanh toán của tất cả thành viên về Chưa trả.</span>
+        </div>
+
+        <form @submit.prevent="submitBillForm" class="space-y-4 text-xs">
+          <!-- Title & Category -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="sm:col-span-2">
+              <label class="block font-bold text-slate-600 mb-1">Mục đích / Tên hoá đơn *</label>
+              <input v-model="billForm.title" type="text" required placeholder="Ăn trưa, Mua đồ dùng..."
+                class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-sm font-semibold" />
+            </div>
+            <div>
+              <label class="block font-bold text-slate-600 mb-1">Danh mục</label>
+              <select v-model="billForm.category" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white outline-none">
+                <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Total Amount & Date -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-slate-600 mb-1">Tổng số tiền (VND) *</label>
+              <input v-model.number="billForm.total_amount" @input="recalcSplit" type="number" min="1000" step="1000" required placeholder="300000"
+                class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-sm font-extrabold font-mono text-indigo-900" />
+            </div>
+            <div>
+              <label class="block font-bold text-slate-600 mb-1">Ngày chi *</label>
+              <input v-model="billForm.expense_date" type="date" required
+                class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none" />
+            </div>
+          </div>
+
+          <!-- Payer & Source Type -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-slate-600 mb-1">Người thanh toán (Payer) *</label>
+              <select v-model="billForm.payer_user_id" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold outline-none">
+                <option v-for="u in teamUsers" :key="u.id" :value="u.id">{{ u.display_name }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-600 mb-1">Nguồn tiền *</label>
+              <div class="flex items-center space-x-2 pt-0.5">
+                <label class="flex-1 text-center py-2 rounded-xl border cursor-pointer font-bold transition text-xs"
+                  :class="billForm.source_type === 'PERSONAL' ? 'bg-amber-50 border-amber-400 text-amber-900' : 'border-slate-200 text-slate-500'">
+                  <input type="radio" v-model="billForm.source_type" value="PERSONAL" class="hidden" @change="recalcSplit" />
+                  Cá nhân
+                </label>
+                <label class="flex-1 text-center py-2 rounded-xl border cursor-pointer font-bold transition text-xs"
+                  :class="billForm.source_type === 'GROUP_FUND' ? 'bg-violet-50 border-violet-400 text-violet-900' : 'border-slate-200 text-slate-500'">
+                  <input type="radio" v-model="billForm.source_type" value="GROUP_FUND" class="hidden" @change="recalcSplit" />
+                  Quỹ nhóm
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Ghi chú thêm</label>
+            <input v-model="billForm.description" type="text" placeholder="Địa chỉ, lý do..."
+              class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none" />
+          </div>
+
+          <!-- PARTICIPANTS & SPLIT SETTINGS -->
+          <div class="border-t border-slate-100 pt-3">
+            <div class="flex items-center justify-between mb-2">
+              <label class="font-bold text-slate-700 uppercase tracking-wider text-[11px]">
+                Danh sách tham gia ({{ selectedParticipantIds.length }} người)
+              </label>
+              <button type="button" @click="selectAllParticipants" class="text-indigo-600 font-semibold hover:underline text-[11px]">
+                Chọn tất cả
+              </button>
+            </div>
+
+            <!-- Split mode toggle if PERSONAL -->
+            <div v-if="billForm.source_type === 'PERSONAL'" class="mb-3">
+              <div class="flex items-center space-x-1 p-1 bg-slate-100 rounded-xl">
+                <button type="button" @click="setSplitMode('EQUAL')"
+                  :class="['flex-1 py-1.5 rounded-lg font-bold text-[11px] transition',
+                          billForm.split_mode === 'EQUAL' ? 'bg-white shadow text-indigo-700' : 'text-slate-500']">
+                  Chia đều (Mode A)
+                </button>
+                <button type="button" @click="setSplitMode('ADJUSTED')"
+                  :class="['flex-1 py-1.5 rounded-lg font-bold text-[11px] transition',
+                          billForm.split_mode === 'ADJUSTED' ? 'bg-white shadow text-indigo-700' : 'text-slate-500']">
+                  Chia đều chỉnh sửa (Mode B)
+                </button>
+                <button type="button" @click="setSplitMode('CUSTOM')"
+                  :class="['flex-1 py-1.5 rounded-lg font-bold text-[11px] transition',
+                          billForm.split_mode === 'CUSTOM' ? 'bg-white shadow text-indigo-700' : 'text-slate-500']">
+                  Tự nhập riêng (Mode C)
+                </button>
+              </div>
+            </div>
+
+            <!-- Participants list with check & share amount inputs -->
+            <div class="max-h-48 overflow-y-auto space-y-2 pr-1">
+              <div v-for="u in teamUsers" :key="u.id"
+                class="p-2.5 rounded-xl border border-slate-100 flex items-center justify-between bg-slate-50/70">
+                <label class="flex items-center space-x-2.5 cursor-pointer">
+                  <input type="checkbox" :value="u.id" v-model="selectedParticipantIds" @change="recalcSplit"
+                    class="rounded text-indigo-600 focus:ring-0 w-4 h-4" />
+                  <span class="font-bold text-slate-800 text-xs">{{ u.display_name }}</span>
+                </label>
+
+                <!-- Share amount display or input -->
+                <div v-if="isParticipantSelected(u.id)">
+                  <div v-if="billForm.source_type === 'GROUP_FUND'" class="text-[11px] text-slate-400 font-semibold italic">
+                    Trừ quỹ nhóm
+                  </div>
+                  <div v-else-if="billForm.split_mode === 'EQUAL'" class="font-mono font-bold text-xs text-indigo-900">
+                    {{ formatVND(participantShares[u.id] || 0) }}
+                  </div>
+                  <div v-else class="flex items-center space-x-1">
+                    <input type="number" v-model.number="participantShares[u.id]" step="1000"
+                      class="w-24 px-2 py-1 text-right font-mono font-bold text-xs rounded-lg border border-slate-200 outline-none focus:border-indigo-500" />
+                    <span class="text-slate-400">đ</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Split balance validation text -->
+            <div v-if="billForm.source_type === 'PERSONAL'" class="mt-2 text-right">
+              <span v-if="sharesDiff === 0" class="text-emerald-600 font-bold text-xs">
+                ✓ Khớp tổng bill ({{ formatVND(billForm.total_amount) }})
+              </span>
+              <span v-else class="text-rose-600 font-bold text-xs">
+                ⚠️ {{ sharesDiff > 0 ? 'Thừa ' + formatVND(sharesDiff) : 'Thiếu ' + formatVND(Math.abs(sharesDiff)) }} so với tổng bill!
+              </span>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
+            <button type="button" @click="showBillModal = false" class="px-4 py-2 text-slate-500 hover:bg-slate-100 font-semibold rounded-xl">
+              Huỷ
+            </button>
+            <button :disabled="billSubmitting || (billForm.source_type === 'PERSONAL' && sharesDiff !== 0)" type="submit"
+              class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition disabled:opacity-50">
+              {{ billSubmitting ? 'Đang lưu...' : (billForm.id ? 'Cập nhật Hoá đơn' : 'Tạo Hoá đơn') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: ĐÓNG QUỸ ================== -->
+    <div v-if="showContributionModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 class="font-black text-slate-800 text-lg">Đóng Quỹ Nhóm</h3>
+          <button @click="showContributionModal = false" class="text-slate-400 hover:text-slate-700 text-xl font-bold">✕</button>
+        </div>
+
+        <form @submit.prevent="submitContribution" class="space-y-4 text-xs">
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Số tiền đóng quỹ (VND) *</label>
+            <input v-model.number="contributionForm.amount" type="number" min="1000" step="1000" required placeholder="500000"
+              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-base font-extrabold font-mono text-emerald-700" />
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Ngày đóng *</label>
+            <input v-model="contributionForm.transaction_date" type="date" required
+              class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none" />
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Ghi chú (tuỳ chọn)</label>
+            <input v-model="contributionForm.note" type="text" placeholder="Đóng quỹ tháng..."
+              class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none" />
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
+            <button type="button" @click="showContributionModal = false" class="px-4 py-2 text-slate-500 hover:bg-slate-100 font-semibold rounded-xl">
+              Huỷ
+            </button>
+            <button :disabled="contributionSubmitting" type="submit"
+              class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow transition disabled:opacity-50">
+              {{ contributionSubmitting ? 'Đang lưu...' : 'Ghi nhận đóng quỹ' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ================== MODAL: VIETQR POPUP ================== -->
+    <div v-if="showQRModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4 text-center">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+          <h3 class="font-black text-slate-800 text-base">Quét mã VietQR chuyển khoản</h3>
+          <button @click="showQRModal = false" class="text-slate-400 hover:text-slate-700 text-xl font-bold">✕</button>
+        </div>
+
+        <div class="py-2">
+          <img :src="qrImageUrl" alt="VietQR" class="mx-auto rounded-2xl shadow border border-slate-200 max-w-[220px]" />
+        </div>
+
+        <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-left text-xs space-y-1">
+          <div class="flex justify-between">
+            <span class="text-slate-400">Ngân hàng:</span>
+            <b class="text-slate-800">{{ qrData.bank_name }}</b>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">Số tài khoản:</span>
+            <b class="text-indigo-700 font-mono">{{ qrData.bank_account_number }}</b>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">Chủ tài khoản:</span>
+            <b class="text-slate-800 uppercase">{{ qrData.bank_account_name }}</b>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">Số tiền:</span>
+            <b class="text-rose-600">{{ formatVND(qrData.amount) }}</b>
+          </div>
+        </div>
+
+        <button @click="showQRModal = false" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition">
+          Đóng
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const { createApp, ref, computed, onMounted } = Vue;
+
+    createApp({
+      setup() {
+        // App State
+        const currentUser = ref(null);
+        const currentTab = ref('dashboard');
+        const debtSubTab = ref('i_owe');
+
+        const tabs = [
+          { id: 'dashboard', name: 'Tổng quan', shortName: 'Tổng quan', icon: '📊' },
+          { id: 'bills', name: 'Hoá đơn', shortName: 'Hoá đơn', icon: '🧾' },
+          { id: 'fund', name: 'Quỹ nhóm', shortName: 'Quỹ nhóm', icon: '💰' },
+          { id: 'debts', name: 'Công nợ', shortName: 'Công nợ', icon: '💳' },
+          { id: 'notifications', name: 'Thông báo', shortName: 'Thông báo', icon: '🔔' },
+          { id: 'profile', name: 'Cá nhân', shortName: 'Cá nhân', icon: '👤' },
+        ];
+
+        const categories = ['Ăn uống', 'Cafe', 'Di chuyển', 'Event', 'Khác'];
+
+        // Auth State
+        const authStep = ref('email'); // 'email', 'login', 'otp_pin'
+        const authEmail = ref('');
+        const authPin = ref('');
+        const authOtp = ref('');
+        const authDisplayName = ref('');
+        const authPurpose = ref('REGISTER');
+        const devOtpCode = ref('');
+        const authLoading = ref(false);
+        const authError = ref('');
+
+        // Dashboard Data
+        const dashboardData = ref({
+          fund_balance: 0,
+          total_i_owe: 0,
+          total_others_owe: 0,
+          recent_bills: [],
+          recent_fund_transactions: [],
+          unread_notifications_count: 0
+        });
+
+        // Bills Data
+        const bills = ref([]);
+        const billsLoading = ref(false);
+        const billFilter = ref({
+          search: '',
+          category: '',
+          source_type: ''
+        });
+
+        // Fund Data
+        const fundSummary = ref({
+          balance: 0,
+          total_in: 0,
+          total_out: 0,
+          members: []
+        });
+        const fundTransactions = ref([]);
+        const fundTxFilter = ref('');
+
+        // Debts Data
+        const debtsData = ref({
+          i_owe: [],
+          others_owe: []
+        });
+
+        // Notifications
+        const notifications = ref([]);
+        const unreadCount = ref(0);
+
+        // Team Users
+        const teamUsers = ref([]);
+
+        // Profile Form
+        const profileForm = ref({
+          display_name: '',
+          avatar_url: '',
+          bank_name: '',
+          bank_account_number: '',
+          bank_account_name: ''
+        });
+        const profileLoading = ref(false);
+
+        // Modals
+        const showBillModal = ref(false);
+        const billSubmitting = ref(false);
+        const billForm = ref({
+          id: null,
+          title: '',
+          category: 'Ăn uống',
+          total_amount: 300000,
+          expense_date: new Date().toISOString().split('T')[0],
+          payer_user_id: null,
+          source_type: 'PERSONAL',
+          split_mode: 'EQUAL',
+          description: '',
+          hasReportedOrPaid: false
+        });
+        const selectedParticipantIds = ref([]);
+        const participantShares = ref({});
+
+        const showContributionModal = ref(false);
+        const contributionSubmitting = ref(false);
+        const contributionForm = ref({
+          amount: 500000,
+          transaction_date: new Date().toISOString().split('T')[0],
+          note: ''
+        });
+
+        const showQRModal = ref(false);
+        const qrData = ref({});
+        const qrImageUrl = ref('');
+
+        // ---------------- Helpers ----------------
+        const formatVND = (val) => {
+          if (val === null || val === undefined) return '0 đ';
+          return new Intl.NumberFormat('vi-VN').format(val) + ' đ';
+        };
+
+        const formatDate = (isoStr) => {
+          if (!isoStr) return '';
+          const d = new Date(isoStr);
+          return d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        };
+
+        const initials = (name) => {
+          if (!name) return 'U';
+          const parts = name.trim().split(' ');
+          return parts[parts.length - 1].charAt(0).toUpperCase();
+        };
+
+        const categoryEmoji = (cat) => {
+          const map = { 'Ăn uống': '🍲', 'Cafe': '☕', 'Di chuyển': '🚕', 'Event': '🎉', 'Khác': '📌' };
+          return map[cat] || '🧾';
+        };
+
+        const notifIcon = (type) => {
+          if (type === 'BILL_CREATED') return '🧾';
+          if (type === 'PAYMENT_REPORTED') return '⏳';
+          if (type === 'PAYMENT_CONFIRMED') return '✅';
+          if (type === 'FUND_CONTRIBUTION') return '💰';
+          if (type === 'BILL_DELETED') return '🗑️';
+          return '🔔';
+        };
+
+        // ---------------- Split Calculations ----------------
+        const isParticipantSelected = (uid) => selectedParticipantIds.value.includes(uid);
+
+        const selectAllParticipants = () => {
+          selectedParticipantIds.value = teamUsers.value.map(u => u.id);
+          recalcSplit();
+        };
+
+        const setSplitMode = (mode) => {
+          billForm.value.split_mode = mode;
+          recalcSplit();
+        };
+
+        const recalcSplit = () => {
+          const count = selectedParticipantIds.value.length;
+          if (count === 0) return;
+          const total = billForm.value.total_amount || 0;
+
+          if (billForm.value.split_mode === 'EQUAL') {
+            const base = Math.floor(total / count);
+            const rem = total % count;
+            selectedParticipantIds.value.forEach((uid, idx) => {
+              participantShares.value[uid] = base + (idx < rem ? 1 : 0);
+            });
+          } else if (billForm.value.split_mode === 'ADJUSTED') {
+            // keep existing or init with equal
+            const base = Math.floor(total / count);
+            selectedParticipantIds.value.forEach((uid) => {
+              if (participantShares.value[uid] === undefined) {
+                participantShares.value[uid] = base;
+              }
+            });
+          }
+        };
+
+        const sharesDiff = computed(() => {
+          if (billForm.value.source_type !== 'PERSONAL') return 0;
+          const sum = selectedParticipantIds.value.reduce((acc, uid) => {
+            return acc + (participantShares.value[uid] || 0);
+          }, 0);
+          return sum - (billForm.value.total_amount || 0);
+        });
+
+        // ---------------- API Calls ----------------
+        const api = async (endpoint, options = {}) => {
+          try {
+            options.headers = options.headers || {};
+            if (options.body && typeof options.body === 'object') {
+              options.headers['Content-Type'] = 'application/json';
+              options.body = JSON.stringify(options.body);
+            }
+            const res = await fetch(endpoint, options);
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              throw new Error(data.detail || 'Có lỗi xảy ra');
+            }
+            return data;
+          } catch (err) {
+            throw err;
+          }
+        };
+
+        // ---------------- Auth Logic ----------------
+        const checkAuth = async () => {
+          try {
+            const me = await api('/api/auth/me');
+            currentUser.value = me;
+            profileForm.value = { ...me };
+            await loadAllData();
+          } catch (e) {
+            currentUser.value = null;
+          }
+        };
+
+        const handleEmailSubmit = async () => {
+          authLoading.value = true;
+          authError.value = '';
+          try {
+            const res = await api('/api/auth/check-email', {
+              method: 'POST',
+              body: { email: authEmail.value }
+            });
+            if (res.exists) {
+              authStep.value = 'login';
+            } else {
+              // Not registered -> trigger OTP
+              authPurpose.value = 'REGISTER';
+              const otpRes = await api('/api/auth/request-otp', {
+                method: 'POST',
+                body: { email: authEmail.value, purpose: 'REGISTER' }
+              });
+              devOtpCode.value = otpRes.dev_code || '';
+              authStep.value = 'otp_pin';
+            }
+          } catch (err) {
+            authError.value = err.message;
+          } finally {
+            authLoading.value = false;
+          }
+        };
+
+        const handleLogin = async () => {
+          authLoading.value = true;
+          authError.value = '';
+          try {
+            const res = await api('/api/auth/login', {
+              method: 'POST',
+              body: { email: authEmail.value, pin: authPin.value }
+            });
+            currentUser.value = res.user;
+            profileForm.value = { ...res.user };
+            await loadAllData();
+          } catch (err) {
+            authError.value = err.message;
+          } finally {
+            authLoading.value = false;
+          }
+        };
+
+        const startResetPin = async () => {
+          authLoading.value = true;
+          authError.value = '';
+          try {
+            authPurpose.value = 'RESET_PIN';
+            const res = await api('/api/auth/request-otp', {
+              method: 'POST',
+              body: { email: authEmail.value, purpose: 'RESET_PIN' }
+            });
+            devOtpCode.value = res.dev_code || '';
+            authStep.value = 'otp_pin';
+          } catch (err) {
+            authError.value = err.message;
+          } finally {
+            authLoading.value = false;
+          }
+        };
+
+        const handleOtpAndSetPin = async () => {
+          authLoading.value = true;
+          authError.value = '';
+          try {
+            const res = await api('/api/auth/register-or-reset', {
+              method: 'POST',
+              body: {
+                email: authEmail.value,
+                code: authOtp.value,
+                purpose: authPurpose.value,
+                pin: authPin.value,
+                display_name: authDisplayName.value || authEmail.value.split('@')[0]
+              }
+            });
+            currentUser.value = res.user;
+            profileForm.value = { ...res.user };
+            await loadAllData();
+          } catch (err) {
+            authError.value = err.message;
+          } finally {
+            authLoading.value = false;
+          }
+        };
+
+        const logout = async () => {
+          await api('/api/auth/logout', { method: 'POST' }).catch(() => {});
+          currentUser.value = null;
+          authStep.value = 'email';
+          authEmail.value = '';
+          authPin.value = '';
+          authOtp.value = '';
+        };
+
+        // ---------------- Data Loading ----------------
+        const loadAllData = async () => {
+          await Promise.all([
+            loadDashboard(),
+            loadBills(),
+            loadFund(),
+            loadDebts(),
+            loadNotifications(),
+            loadTeamUsers()
+          ]);
+        };
+
+        const loadDashboard = async () => {
+          try {
+            dashboardData.value = await api('/api/dashboard');
+          } catch (e) {}
+        };
+
+        const loadBills = async () => {
+          billsLoading.value = true;
+          try {
+            const params = new URLSearchParams();
+            if (billFilter.value.search) params.set('search', billFilter.value.search);
+            if (billFilter.value.category) params.set('category', billFilter.value.category);
+            if (billFilter.value.source_type) params.set('source_type', billFilter.value.source_type);
+            bills.value = await api('/api/bills?' + params.toString());
+          } catch (e) {
+          } finally {
+            billsLoading.value = false;
+          }
+        };
+
+        const loadFund = async () => {
+          try {
+            fundSummary.value = await api('/api/fund/summary');
+            fundTransactions.value = await api('/api/fund/transactions');
+          } catch (e) {}
+        };
+
+        const filteredFundTransactions = computed(() => {
+          if (!fundTxFilter.value) return fundTransactions.value;
+          return fundTransactions.value.filter(tx => tx.type === fundTxFilter.value);
+        });
+
+        const loadDebts = async () => {
+          try {
+            debtsData.value = await api('/api/debts');
+          } catch (e) {}
+        };
+
+        const loadNotifications = async () => {
+          try {
+            const res = await api('/api/notifications');
+            notifications.value = res.notifications;
+            unreadCount.value = res.unread_count;
+          } catch (e) {}
+        };
+
+        const loadTeamUsers = async () => {
+          try {
+            teamUsers.value = await api('/api/users');
+          } catch (e) {}
+        };
+
+        // ---------------- Bill Actions ----------------
+        const openCreateBillModal = () => {
+          billForm.value = {
+            id: null,
+            title: '',
+            category: 'Ăn uống',
+            total_amount: 300000,
+            expense_date: new Date().toISOString().split('T')[0],
+            payer_user_id: currentUser.value.id,
+            source_type: 'PERSONAL',
+            split_mode: 'EQUAL',
+            description: '',
+            hasReportedOrPaid: false
+          };
+          selectedParticipantIds.value = teamUsers.value.map(u => u.id);
+          participantShares.value = {};
+          recalcSplit();
+          showBillModal.value = true;
+        };
+
+        const openEditBillModal = (bill) => {
+          const hasReportedOrPaid = bill.participants.some(p => p.payment_status && p.payment_status !== 'UNPAID');
+          billForm.value = {
+            id: bill.id,
+            title: bill.title,
+            category: bill.category,
+            total_amount: bill.total_amount,
+            expense_date: bill.expense_date,
+            payer_user_id: bill.payer_user_id,
+            source_type: bill.source_type,
+            split_mode: bill.split_mode || 'EQUAL',
+            description: bill.description,
+            hasReportedOrPaid: hasReportedOrPaid
+          };
+          selectedParticipantIds.value = bill.participants.map(p => p.user_id);
+          participantShares.value = {};
+          bill.participants.forEach(p => {
+            participantShares.value[p.user_id] = p.share_amount || 0;
+          });
+          showBillModal.value = true;
+        };
+
+        const submitBillForm = async () => {
+          billSubmitting.value = true;
+          try {
+            const participants = selectedParticipantIds.value.map(uid => ({
+              user_id: uid,
+              share_amount: billForm.value.source_type === 'PERSONAL' ? participantShares.value[uid] : null
+            }));
+
+            const payload = {
+              title: billForm.value.title,
+              description: billForm.value.description,
+              category: billForm.value.category,
+              total_amount: billForm.value.total_amount,
+              expense_date: billForm.value.expense_date,
+              payer_user_id: billForm.value.payer_user_id,
+              source_type: billForm.value.source_type,
+              split_mode: billForm.value.source_type === 'PERSONAL' ? billForm.value.split_mode : 'NONE',
+              participants: participants
+            };
+
+            if (billForm.value.id) {
+              await api(`/api/bills/${billForm.value.id}`, { method: 'PATCH', body: payload });
+            } else {
+              await api('/api/bills', { method: 'POST', body: payload });
+            }
+
+            showBillModal.value = false;
+            await loadAllData();
+          } catch (err) {
+            alert(err.message);
+          } finally {
+            billSubmitting.value = false;
+          }
+        };
+
+        const confirmDeleteBill = async (bill) => {
+          if (!confirm(`Bạn có chắc chắn muốn xoá hoá đơn "${bill.title}" không?`)) return;
+          try {
+            await api(`/api/bills/${bill.id}`, { method: 'DELETE' });
+            await loadAllData();
+          } catch (err) {
+            alert(err.message);
+          }
+        };
+
+        // ---------------- Payment Flow ----------------
+        const reportPayment = async (billId) => {
+          if (!confirm("Xác nhận bạn đã chuyển khoản khoản tiền này?")) return;
+          try {
+            await api(`/api/bills/${billId}/payment-report`, { method: 'POST' });
+            await loadAllData();
+          } catch (err) {
+            alert(err.message);
+          }
+        };
+
+        const confirmPayment = async (billId, debtorUserId) => {
+          if (!confirm("Xác nhận bạn đã nhận đủ số tiền?")) return;
+          try {
+            await api(`/api/bills/${billId}/payment-confirm`, {
+              method: 'POST',
+              body: { user_id: debtorUserId }
+            });
+            await loadAllData();
+          } catch (err) {
+            alert(err.message);
+          }
+        };
+
+        const showVietQR = (bill) => {
+          const myPart = bill.participants.find(p => p.user_id === currentUser.value.id);
+          const amount = myPart ? myPart.share_amount : bill.total_amount;
+          qrData.value = {
+            bank_name: bill.bank_name || 'VIB',
+            bank_account_number: bill.bank_account_number || '',
+            bank_account_name: bill.bank_account_name || bill.payer_name,
+            amount: amount,
+            memo: `Tra bill ${bill.id}`
+          };
+          qrImageUrl.value = `https://img.vietqr.io/image/${encodeURIComponent(qrData.value.bank_name)}-${encodeURIComponent(qrData.value.bank_account_number)}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(qrData.value.memo)}`;
+          showQRModal.value = true;
+        };
+
+        const showDebtVietQR = (debt) => {
+          qrData.value = {
+            bank_name: debt.bank_name || 'VIB',
+            bank_account_number: debt.bank_account_number || '',
+            bank_account_name: debt.bank_account_name || debt.creditor_name,
+            amount: debt.share_amount,
+            memo: `Tra bill ${debt.bill_id}`
+          };
+          qrImageUrl.value = `https://img.vietqr.io/image/${encodeURIComponent(qrData.value.bank_name)}-${encodeURIComponent(qrData.value.bank_account_number)}-compact2.png?amount=${debt.share_amount}&addInfo=${encodeURIComponent(qrData.value.memo)}`;
+          showQRModal.value = true;
+        };
+
+        // ---------------- Fund Contribution ----------------
+        const openContributionModal = () => {
+          contributionForm.value = {
+            amount: 500000,
+            transaction_date: new Date().toISOString().split('T')[0],
+            note: `${currentUser.value.display_name} đóng quỹ`
+          };
+          showContributionModal.value = true;
+        };
+
+        const submitContribution = async () => {
+          contributionSubmitting.value = true;
+          try {
+            await api('/api/fund/contributions', {
+              method: 'POST',
+              body: contributionForm.value
+            });
+            showContributionModal.value = false;
+            await loadAllData();
+          } catch (err) {
+            alert(err.message);
+          } finally {
+            contributionSubmitting.value = false;
+          }
+        };
+
+        // ---------------- Notifications ----------------
+        const markNotificationRead = async (n) => {
+          if (!n.is_read) {
+            await api(`/api/notifications/${n.id}/read`, { method: 'POST' }).catch(() => {});
+            n.is_read = 1;
+            if (unreadCount.value > 0) unreadCount.value--;
+          }
+        };
+
+        const readAllNotifications = async () => {
+          await api('/api/notifications/read-all', { method: 'POST' }).catch(() => {});
+          notifications.value.forEach(n => n.is_read = 1);
+          unreadCount.value = 0;
+        };
+
+        // ---------------- Profile ----------------
+        const updateProfile = async () => {
+          profileLoading.value = true;
+          try {
+            const res = await api('/api/users/me', {
+              method: 'PATCH',
+              body: profileForm.value
+            });
+            currentUser.value = res.user;
+            alert("Cập nhật thông tin thành công!");
+          } catch (err) {
+            alert(err.message);
+          } finally {
+            profileLoading.value = false;
+          }
+        };
+
+        onMounted(() => {
+          checkAuth();
+        });
+
+        return {
+          currentUser,
+          currentTab,
+          debtSubTab,
+          tabs,
+          categories,
+          authStep,
+          authEmail,
+          authPin,
+          authOtp,
+          authDisplayName,
+          authPurpose,
+          devOtpCode,
+          authLoading,
+          authError,
+          dashboardData,
+          bills,
+          billsLoading,
+          billFilter,
+          fundSummary,
+          fundTransactions,
+          fundTxFilter,
+          filteredFundTransactions,
+          debtsData,
+          notifications,
+          unreadCount,
+          teamUsers,
+          profileForm,
+          profileLoading,
+          showBillModal,
+          billSubmitting,
+          billForm,
+          selectedParticipantIds,
+          participantShares,
+          sharesDiff,
+          showContributionModal,
+          contributionSubmitting,
+          contributionForm,
+          showQRModal,
+          qrData,
+          qrImageUrl,
+          formatVND,
+          formatDate,
+          initials,
+          categoryEmoji,
+          notifIcon,
+          isParticipantSelected,
+          selectAllParticipants,
+          setSplitMode,
+          recalcSplit,
+          handleEmailSubmit,
+          handleLogin,
+          startResetPin,
+          handleOtpAndSetPin,
+          logout,
+          loadBills,
+          openCreateBillModal,
+          openEditBillModal,
+          submitBillForm,
+          confirmDeleteBill,
+          reportPayment,
+          confirmPayment,
+          showVietQR,
+          showDebtVietQR,
+          openContributionModal,
+          submitContribution,
+          markNotificationRead,
+          readAllNotifications,
+          updateProfile
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
