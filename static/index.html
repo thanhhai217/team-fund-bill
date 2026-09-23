@@ -896,12 +896,12 @@
             <div>
               <label class="block font-bold text-slate-600 mb-1">Tổng tiền (VND) *</label>
               <input v-model.number="billForm.total_amount" @input="recalcSplit" type="number" inputmode="numeric" min="1000" step="1000" required placeholder="300000"
-                class="w-full px-3 py-2 text-base sm:text-sm font-extrabold font-mono text-indigo-900 rounded-xl border border-slate-200 outline-none focus:border-indigo-500" />
+                class="w-full max-w-full block box-border px-3 py-2 text-base sm:text-sm font-extrabold font-mono text-indigo-900 rounded-xl border border-slate-200 outline-none focus:border-indigo-500" />
             </div>
             <div>
               <label class="block font-bold text-slate-600 mb-1">Ngày chi *</label>
               <input v-model="billForm.expense_date" type="date" required
-                class="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-200 outline-none" />
+                class="w-full max-w-full block box-border px-2.5 py-2 text-xs rounded-xl border border-slate-200 outline-none bg-white min-w-0" />
             </div>
           </div>
 
@@ -1021,31 +1021,31 @@
     </div>
 
     <!-- ================== MODAL: ĐÓNG QUỸ (Mobile Bottom Sheet) ================== -->
-    <div v-if="showContributionModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4">
+    <div v-if="showContributionModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
+      <div class="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-sm p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4 safe-nav-pb overflow-hidden box-border">
         <div class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-1 sm:hidden"></div>
         <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
           <h3 class="font-black text-slate-800 text-base sm:text-lg">Đóng Quỹ Nhóm</h3>
-          <button @click="showContributionModal = false" class="text-slate-400 hover:text-slate-700 text-xl font-bold">✕</button>
+          <button @click="showContributionModal = false" class="text-slate-400 hover:text-slate-700 text-xl font-bold p-1 leading-none">✕</button>
         </div>
 
-        <form @submit.prevent="submitContribution" class="space-y-3.5 text-xs">
-          <div>
+        <form @submit.prevent="submitContribution" class="space-y-3.5 text-xs w-full box-border">
+          <div class="w-full">
             <label class="block font-bold text-slate-600 mb-1">Số tiền đóng quỹ (VND) *</label>
             <input v-model.number="contributionForm.amount" type="number" inputmode="numeric" min="1000" step="1000" required placeholder="500000"
-              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-base font-extrabold font-mono text-emerald-700" />
+              class="w-full max-w-full block box-border px-3 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-base font-extrabold font-mono text-emerald-700" />
           </div>
 
-          <div>
+          <div class="w-full">
             <label class="block font-bold text-slate-600 mb-1">Ngày đóng *</label>
             <input v-model="contributionForm.transaction_date" type="date" required
-              class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none" />
+              class="w-full max-w-full block box-border px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none bg-white min-w-0" />
           </div>
 
-          <div>
+          <div class="w-full">
             <label class="block font-bold text-slate-600 mb-1">Ghi chú (tuỳ chọn)</label>
             <input v-model="contributionForm.note" type="text" placeholder="Đóng quỹ tháng..."
-              class="w-full px-3 py-2 text-base sm:text-xs rounded-xl border border-slate-200 outline-none" />
+              class="w-full max-w-full block box-border px-3 py-2 text-base sm:text-xs rounded-xl border border-slate-200 outline-none" />
           </div>
 
           <div class="pt-2 border-t border-slate-100 flex items-center justify-end space-x-2">
@@ -1062,12 +1062,12 @@
     </div>
 
     <!-- ================== MODAL: VIETQR POPUP (Mobile Optimized) ================== -->
-    <div v-if="showQRModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-slate-100 space-y-3.5 text-center">
+    <div v-if="showQRModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
+      <div class="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-sm p-5 shadow-2xl border border-slate-100 space-y-3.5 text-center safe-nav-pb overflow-hidden box-border">
         <div class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-1 sm:hidden"></div>
         <div class="flex items-center justify-between border-b border-slate-100 pb-2">
           <h3 class="font-black text-slate-800 text-sm sm:text-base">Mã VietQR Chuyển Khoản</h3>
-          <button @click="showQRModal = false" class="text-slate-400 hover:text-slate-700 text-xl font-bold">✕</button>
+          <button @click="showQRModal = false" class="text-slate-400 hover:text-slate-700 text-xl font-bold p-1 leading-none">✕</button>
         </div>
 
         <div class="py-1">
