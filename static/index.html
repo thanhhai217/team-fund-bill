@@ -1020,40 +1020,63 @@
       </div>
     </div>
 
-    <!-- ================== MODAL: ĐÓNG QUỸ (Mobile Bottom Sheet) ================== -->
-    <div v-if="showContributionModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
-      <div class="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-sm p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4 safe-nav-pb overflow-hidden box-border">
-        <div class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-1 sm:hidden"></div>
-        <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-          <h3 class="font-black text-slate-800 text-base sm:text-lg">Đóng Quỹ Nhóm</h3>
-          <button @click="showContributionModal = false" class="text-slate-400 hover:text-slate-700 text-xl font-bold p-1 leading-none">✕</button>
+    <!-- ================== MODAL: ĐÓNG QUỸ (Popup giữa màn hình) ================== -->
+    <div v-if="showContributionModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+      <div class="bg-white rounded-3xl w-full max-w-sm sm:max-w-md p-6 shadow-2xl border border-slate-100 space-y-4 overflow-hidden">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center space-x-2">
+            <span class="text-xl">💰</span>
+            <h3 class="font-black text-slate-800 text-base sm:text-lg">Đóng Quỹ Nhóm</h3>
+          </div>
+          <button @click="showContributionModal = false" class="text-slate-400 hover:text-slate-700 text-2xl font-bold p-1 leading-none">✕</button>
         </div>
 
-        <form @submit.prevent="submitContribution" class="space-y-3.5 text-xs w-full box-border">
-          <div class="w-full">
-            <label class="block font-bold text-slate-600 mb-1">Số tiền đóng quỹ (VND) *</label>
-            <input v-model.number="contributionForm.amount" type="number" inputmode="numeric" min="1000" step="1000" required placeholder="500000"
-              class="w-full max-w-full block box-border px-3 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-base font-extrabold font-mono text-emerald-700" />
+        <form @submit.prevent="submitContribution" class="space-y-4 text-xs w-full">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="font-bold text-slate-700">Số tiền đóng quỹ (VND) *</label>
+              <span class="font-bold text-emerald-600 text-xs">{{ formatVND(contributionForm.amount) }}</span>
+            </div>
+            <div class="relative">
+              <input type="text" inputmode="numeric" required
+                :value="formatNumber(contributionForm.amount)"
+                @input="handleContributionAmountInput"
+                placeholder="500.000"
+                class="w-full px-3.5 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 outline-none text-xl font-extrabold font-mono text-emerald-700 transition" />
+              <span class="absolute right-3.5 top-3.5 text-xs font-bold text-slate-400">VND</span>
+            </div>
+            <!-- Quick amount buttons -->
+            <div class="flex items-center space-x-1.5 mt-2">
+              <button type="button" v-for="amt in [200000, 500000, 1000000]" :key="amt"
+                @click="contributionForm.amount = amt"
+                class="flex-1 py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-[11px] font-semibold text-slate-600 transition">
+                +{{ formatNumber(amt) }}
+              </button>
+            </div>
           </div>
 
-          <div class="w-full">
-            <label class="block font-bold text-slate-600 mb-1">Ngày đóng *</label>
-            <input v-model="contributionForm.transaction_date" type="date" required
-              class="w-full max-w-full block box-border px-3 py-2 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none bg-white min-w-0" />
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Ngày đóng *</label>
+            <div class="w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <input v-model="contributionForm.transaction_date" type="date" required
+                class="w-full block bg-transparent px-3 py-2.5 text-sm text-slate-800 outline-none"
+                style="-webkit-appearance: none; -moz-appearance: none; appearance: none; min-width: 0; box-sizing: border-box; width: 100%;" />
+            </div>
           </div>
 
-          <div class="w-full">
-            <label class="block font-bold text-slate-600 mb-1">Ghi chú (tuỳ chọn)</label>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Ghi chú (tuỳ chọn)</label>
             <input v-model="contributionForm.note" type="text" placeholder="Đóng quỹ tháng..."
-              class="w-full max-w-full block box-border px-3 py-2 text-base sm:text-xs rounded-xl border border-slate-200 outline-none" />
+              class="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 focus:border-indigo-500 outline-none" />
           </div>
 
-          <div class="pt-2 border-t border-slate-100 flex items-center justify-end space-x-2">
-            <button type="button" @click="showContributionModal = false" class="px-3.5 py-2 text-slate-500 font-semibold rounded-xl text-xs">
+          <div class="pt-3 border-t border-slate-100 flex items-center space-x-3">
+            <button type="button" @click="showContributionModal = false"
+              class="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl text-sm transition active:scale-95 text-center">
               Huỷ
             </button>
-            <button :disabled="contributionSubmitting" type="submit"
-              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow transition disabled:opacity-50 text-xs active:scale-95">
+            <button :disabled="contributionSubmitting || !contributionForm.amount" type="submit"
+              class="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl text-sm shadow-md shadow-emerald-100 transition disabled:opacity-50 active:scale-95 text-center">
               {{ contributionSubmitting ? 'Đang lưu...' : 'Ghi nhận đóng quỹ' }}
             </button>
           </div>
@@ -1614,6 +1637,18 @@
           showQRModal.value = true;
         };
 
+        const formatNumber = (val) => {
+          if (!val && val !== 0) return '';
+          return new Intl.NumberFormat('vi-VN').format(val);
+        };
+
+        const handleContributionAmountInput = (e) => {
+          const raw = e.target.value.replace(/\D/g, '');
+          const num = raw ? parseInt(raw, 10) : 0;
+          contributionForm.value.amount = num;
+          e.target.value = num ? formatNumber(num) : '';
+        };
+
         const openContributionModal = () => {
           contributionForm.value = {
             amount: 500000,
@@ -1708,6 +1743,8 @@
           qrData,
           qrImageUrl,
           formatVND,
+          formatNumber,
+          handleContributionAmountInput,
           formatDate,
           initials,
           categoryEmoji,
