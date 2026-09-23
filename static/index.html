@@ -744,16 +744,36 @@
 
         <!-- 6. PROFILE VIEW -->
         <div v-if="currentTab === 'profile'" class="max-w-md w-full mx-auto space-y-4">
+          <!-- Toast notification if updated -->
+          <div v-if="profileToast" class="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-2xl flex items-center justify-between">
+            <span class="flex items-center space-x-1.5">
+              <span>✓</span>
+              <span>{{ profileToast }}</span>
+            </span>
+            <button @click="profileToast = ''" class="text-emerald-700 font-bold text-sm">✕</button>
+          </div>
+
           <!-- Card 1: Thông tin tài khoản & VietQR -->
           <div class="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm space-y-4">
-            <div class="flex items-center space-x-3.5 border-b border-slate-100 pb-4">
-              <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-black text-xl flex items-center justify-center overflow-hidden shadow-md shrink-0">
-                <img v-if="profileForm.avatar_url" :src="profileForm.avatar_url" class="w-full h-full object-cover" />
-                <span v-else>{{ initials(profileForm.display_name) }}</span>
+            <!-- Avatar Upload Section -->
+            <div class="flex items-center space-x-4 border-b border-slate-100 pb-4">
+              <div class="relative group cursor-pointer" @click="triggerAvatarUpload">
+                <div class="w-16 h-16 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-black text-2xl flex items-center justify-center overflow-hidden shadow-md shrink-0">
+                  <img v-if="profileForm.avatar_url" :src="profileForm.avatar_url" class="w-full h-full object-cover" />
+                  <span v-else>{{ initials(profileForm.display_name) }}</span>
+                </div>
+                <div class="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center text-white opacity-85 hover:opacity-100 transition">
+                  <span class="text-base">📷</span>
+                </div>
+                <input ref="avatarFileInput" type="file" accept="image/*" class="hidden" @change="handleAvatarFileSelect" />
               </div>
               <div class="min-w-0 flex-1">
                 <h3 class="font-extrabold text-slate-800 text-base truncate">{{ currentUser.display_name }}</h3>
-                <p class="text-xs text-slate-500 font-mono truncate">{{ currentUser.email }}</p>
+                <p class="text-xs text-slate-500 font-mono truncate mb-1.5">{{ currentUser.email }}</p>
+                <button type="button" @click="triggerAvatarUpload"
+                  class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition active:scale-95">
+                  {{ profileForm.avatar_url ? 'Thay ảnh đại diện' : '📷 Tải ảnh từ thiết bị' }}
+                </button>
               </div>
             </div>
 
@@ -764,16 +784,10 @@
                   class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-sm font-semibold" />
               </div>
 
-              <div>
-                <label class="block font-bold text-slate-600 mb-1">Ảnh đại diện (URL tuỳ chọn)</label>
-                <input v-model="profileForm.avatar_url" type="url" placeholder="https://example.com/avatar.jpg"
-                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-xs" />
-              </div>
-
               <div class="border-t border-slate-100 pt-3 space-y-2.5">
                 <div class="flex items-center justify-between">
                   <h4 class="font-bold text-slate-800 text-xs">Tài khoản nhận tiền (VietQR)</h4>
-                  <span class="text-[10px] text-slate-400">Dùng để tạo mã QR chuyển khoản</span>
+                  <span class="text-[10px] text-slate-400">Dùng để tạo mã QR</span>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                   <div>
@@ -786,11 +800,6 @@
                     <input v-model="profileForm.bank_account_number" type="text" inputmode="numeric" placeholder="000123456789"
                       class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-xs font-mono font-bold" />
                   </div>
-                </div>
-                <div>
-                  <label class="block text-[11px] font-bold text-slate-500 mb-1">Tên chủ tài khoản</label>
-                  <input v-model="profileForm.bank_account_name" type="text" placeholder="NGUYEN VAN A"
-                    class="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-xs font-bold uppercase" />
                 </div>
               </div>
 
@@ -808,35 +817,21 @@
             </form>
           </div>
 
-          <!-- Card 2: Bảo mật & Mã PIN (Tách biệt thành Card riêng) -->
-          <div class="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm space-y-3 text-xs">
-            <div class="flex items-center space-x-2 border-b border-slate-100 pb-2.5">
-              <span class="text-base">🔒</span>
+          <!-- Card 2: Button Đổi mã PIN -->
+          <div class="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg shrink-0">
+                🔒
+              </div>
               <div>
-                <h4 class="font-extrabold text-slate-800 text-sm">Bảo mật & Đổi mã PIN</h4>
-                <p class="text-[11px] text-slate-400">Đổi mã PIN 4 số đăng nhập tài khoản</p>
+                <h4 class="font-extrabold text-slate-800 text-sm">Mã PIN đăng nhập</h4>
+                <p class="text-[11px] text-slate-400">Bảo mật tài khoản với mã PIN 4 số</p>
               </div>
             </div>
-
-            <form @submit.prevent="handleChangePin" class="space-y-3">
-              <div>
-                <label class="block text-[11px] font-bold text-slate-600 mb-1">Mã PIN mới (4 chữ số)</label>
-                <div class="flex items-center space-x-2">
-                  <div class="relative flex-1 min-w-0">
-                    <input v-model="changePinVal" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="••••"
-                      class="w-full px-3 py-2 text-center text-2xl tracking-[0.4em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-slate-800" />
-                  </div>
-                  <button :disabled="changePinLoading || !changePinVal || changePinVal.length !== 4" type="submit"
-                    class="py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition disabled:opacity-50 active:scale-95 shrink-0">
-                    {{ changePinLoading ? 'Đang đổi...' : 'Đổi PIN' }}
-                  </button>
-                </div>
-              </div>
-
-              <p v-if="changePinMsg" :class="['text-xs font-bold pt-1', changePinMsg.includes('thành công') ? 'text-emerald-600' : 'text-rose-600']">
-                {{ changePinMsg }}
-              </p>
-            </form>
+            <button type="button" @click="openChangePinModal"
+              class="py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition active:scale-95 shadow-sm shrink-0">
+              Đổi mã PIN
+            </button>
           </div>
         </div>
 
@@ -1122,6 +1117,57 @@
       </div>
     </div>
 
+    <!-- ================== MODAL: ĐỔI MÃ PIN (Popup giữa màn hình) ================== -->
+    <div v-if="showChangePinModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+      <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-slate-100 space-y-4 overflow-hidden">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center space-x-2">
+            <span class="text-xl">🔒</span>
+            <h3 class="font-black text-slate-800 text-base">Đổi mã PIN mới</h3>
+          </div>
+          <button @click="showChangePinModal = false" class="text-slate-400 hover:text-slate-700 text-2xl font-bold p-1 leading-none">✕</button>
+        </div>
+
+        <form @submit.prevent="submitChangePinModal" class="space-y-4 text-xs w-full">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Mã PIN mới (4 số)</label>
+            <input v-model="changePinNew1" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="••••"
+              class="w-full px-4 py-2.5 text-center text-3xl tracking-[0.5em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-slate-800 transition" />
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Nhập lại mã PIN mới (xác nhận)</label>
+            <input v-model="changePinNew2" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="••••"
+              class="w-full px-4 py-2.5 text-center text-3xl tracking-[0.5em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-slate-800 transition" />
+          </div>
+
+          <div v-if="changePinNew2.length === 4">
+            <p v-if="changePinNew1 === changePinNew2" class="text-xs text-emerald-600 font-bold flex items-center space-x-1">
+              <span>✓</span><span>Mã PIN trùng khớp</span>
+            </p>
+            <p v-else class="text-xs text-rose-600 font-bold flex items-center space-x-1">
+              <span>✕</span><span>Mã PIN xác nhận không khớp</span>
+            </p>
+          </div>
+
+          <div v-if="modalChangePinError" class="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold">
+            {{ modalChangePinError }}
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 flex items-center space-x-3">
+            <button type="button" @click="showChangePinModal = false"
+              class="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl text-xs transition active:scale-95 text-center">
+              Huỷ
+            </button>
+            <button :disabled="modalChangePinLoading || !changePinNew1 || changePinNew1.length !== 4 || changePinNew1 !== changePinNew2" type="submit"
+              class="flex-1 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-xs shadow-md shadow-indigo-100 transition disabled:opacity-50 active:scale-95 text-center">
+              {{ modalChangePinLoading ? 'Đang lưu...' : 'Lưu mã PIN' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -1160,9 +1206,13 @@
         const newPin1 = ref('');
         const newPin2 = ref('');
         const pinSubmitLoading = ref(false);
-        const changePinVal = ref('');
-        const changePinLoading = ref(false);
-        const changePinMsg = ref('');
+        const profileToast = ref('');
+        const avatarFileInput = ref(null);
+        const showChangePinModal = ref(false);
+        const changePinNew1 = ref('');
+        const changePinNew2 = ref('');
+        const modalChangePinLoading = ref(false);
+        const modalChangePinError = ref('');
 
         const dashboardData = ref({
           fund_balance: 0,
@@ -1688,15 +1738,81 @@
           unreadCount.value = 0;
         };
 
+        const triggerAvatarUpload = () => {
+          if (avatarFileInput.value) avatarFileInput.value.click();
+        };
+
+        const handleAvatarFileSelect = (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const maxDim = 256;
+              let w = img.width, h = img.height;
+              if (w > h) {
+                if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
+              } else {
+                if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
+              }
+              canvas.width = w;
+              canvas.height = h;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, w, h);
+              profileForm.value.avatar_url = canvas.toDataURL('image/jpeg', 0.82);
+            };
+            img.src = event.target.result;
+          };
+          reader.readAsDataURL(file);
+        };
+
+        const openChangePinModal = () => {
+          changePinNew1.value = '';
+          changePinNew2.value = '';
+          modalChangePinError.value = '';
+          showChangePinModal.value = true;
+        };
+
+        const submitChangePinModal = async () => {
+          if (!changePinNew1.value || changePinNew1.value.length !== 4) return;
+          if (changePinNew1.value !== changePinNew2.value) {
+            modalChangePinError.value = "Mã PIN xác nhận không trùng khớp.";
+            return;
+          }
+          modalChangePinLoading.value = true;
+          modalChangePinError.value = '';
+          try {
+            await api('/api/auth/change-pin', {
+              method: 'POST',
+              body: { new_pin: changePinNew1.value }
+            });
+            showChangePinModal.value = false;
+            profileToast.value = "Đổi mã PIN mới thành công!";
+            setTimeout(() => { profileToast.value = ''; }, 4000);
+          } catch (err) {
+            modalChangePinError.value = err.message;
+          } finally {
+            modalChangePinLoading.value = false;
+          }
+        };
+
         const updateProfile = async () => {
           profileLoading.value = true;
           try {
             const res = await api('/api/users/me', {
               method: 'PATCH',
-              body: profileForm.value
+              body: {
+                display_name: profileForm.value.display_name,
+                avatar_url: profileForm.value.avatar_url,
+                bank_name: profileForm.value.bank_name,
+                bank_account_number: profileForm.value.bank_account_number
+              }
             });
             currentUser.value = res.user;
-            alert("Cập nhật thông tin thành công!");
+            profileToast.value = "Lưu thông tin hồ sơ thành công!";
+            setTimeout(() => { profileToast.value = ''; }, 4000);
           } catch (err) {
             alert(err.message);
           } finally {
@@ -1730,6 +1846,17 @@
           teamUsers,
           profileForm,
           profileLoading,
+          profileToast,
+          avatarFileInput,
+          triggerAvatarUpload,
+          handleAvatarFileSelect,
+          showChangePinModal,
+          changePinNew1,
+          changePinNew2,
+          modalChangePinLoading,
+          modalChangePinError,
+          openChangePinModal,
+          submitChangePinModal,
           showBillModal,
           billSubmitting,
           billForm,
@@ -1766,10 +1893,6 @@
           handleEmailSubmit,
           handleLogin,
           handleConfirmNewPin,
-          changePinVal,
-          changePinLoading,
-          changePinMsg,
-          handleChangePin,
           logout,
           loadBills,
           openCreateBillModal,
