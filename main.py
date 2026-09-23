@@ -3,6 +3,7 @@ import sqlite3
 import hashlib
 import secrets
 import asyncio
+import base64
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
@@ -18,6 +19,10 @@ N8N_WEBHOOK_URL = os.environ.get("N8N_WEBHOOK_URL", "")
 SESSION_EXPIRE_DAYS = 30
 OTP_EXPIRE_MINUTES = 10
 SALT = os.environ.get("APP_SALT", "team-fund-salt-secret-2026")
+
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+AVATARS_DIR = os.path.join(STATIC_DIR, "avatars")
+os.makedirs(AVATARS_DIR, exist_ok=True)
 
 # ----------------- Database Init & Helpers -----------------
 
@@ -241,6 +246,9 @@ class LoginReq(BaseModel):
     email: str
     pin: str = Field(min_length=4, max_length=4)
 
+class AvatarUploadReq(BaseModel):
+    image_data: str
+
 class ProfileUpdateReq(BaseModel):
     display_name: Optional[str] = None
     avatar_url: Optional[str] = None
@@ -416,6 +424,36 @@ def list_users(conn: sqlite3.Connection = Depends(get_db), current_user: dict = 
     """).fetchall()
     return [dict(r) for r in rows]
 
+@app.post("/api/users/me/avatar")
+def upload_avatar(data: AvatarUploadReq, user: dict = Depends(get_current_user), conn: sqlite3.Connection = Depends(get_db)):
+    img_b64 = data.image_data.strip()
+    if "," in img_b64:
+        img_b64 = img_b64.split(",", 1)[1]
+
+    try:
+        raw_bytes = base64.b64decode(img_b64)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Dữ liệu ảnh không hợp lệ.")
+
+    if len(raw_bytes) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Kích thước ảnh tối đa 5MB.")
+
+    os.makedirs(AVATARS_DIR, exist_ok=True)
+    filename = f"user_{user['id']}.jpg"
+    file_path = os.path.join(AVATARS_DIR, filename)
+
+    with open(file_path, "wb") as f:
+        f.write(raw_bytes)
+
+    v = int(datetime.now().timestamp())
+    avatar_url = f"/static/avatars/{filename}?v={v}"
+    now_str = now_iso()
+
+    with conn:
+        conn.execute("UPDATE users SET avatar_url = ?, updated_at = ? WHERE id = ?", (avatar_url, now_str, user["id"]))
+
+    return {"message": "Cập nhật ảnh đại diện thành công", "avatar_url": avatar_url}
+
 @app.patch("/api/users/me")
 def update_profile(data: ProfileUpdateReq, user: dict = Depends(get_current_user), conn: sqlite3.Connection = Depends(get_db)):
     updates = []
@@ -423,8 +461,21 @@ def update_profile(data: ProfileUpdateReq, user: dict = Depends(get_current_user
     for field in ("display_name", "avatar_url", "bank_name", "bank_account_number", "bank_account_name"):
         val = getattr(data, field)
         if val is not None:
+            val_str = val.strip()
+            if field == "avatar_url" and val_str.startswith("data:image/"):
+                try:
+                    b64 = val_str.split(",", 1)[1] if "," in val_str else val_str
+                    raw_bytes = base64.b64decode(b64)
+                    os.makedirs(AVATARS_DIR, exist_ok=True)
+                    filename = f"user_{user['id']}.jpg"
+                    with open(os.path.join(AVATARS_DIR, filename), "wb") as f:
+                        f.write(raw_bytes)
+                    v = int(datetime.now().timestamp())
+                    val_str = f"/static/avatars/{filename}?v={v}"
+                except Exception as e:
+                    print(f"[avatar-save-error] {e}")
             updates.append(f"{field} = ?")
-            params.append(val.strip())
+            params.append(val_str)
 
     if not updates:
         return {"message": "Không có gì thay đổi", "user": user}

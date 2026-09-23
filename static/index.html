@@ -1748,7 +1748,7 @@
           const reader = new FileReader();
           reader.onload = (event) => {
             const img = new Image();
-            img.onload = () => {
+            img.onload = async () => {
               const canvas = document.createElement('canvas');
               const maxDim = 256;
               let w = img.width, h = img.height;
@@ -1761,7 +1761,25 @@
               canvas.height = h;
               const ctx = canvas.getContext('2d');
               ctx.drawImage(img, 0, 0, w, h);
-              profileForm.value.avatar_url = canvas.toDataURL('image/jpeg', 0.82);
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+              // Immediate optimistic UI update
+              profileForm.value.avatar_url = dataUrl;
+              if (currentUser.value) currentUser.value.avatar_url = dataUrl;
+
+              // Persistent upload to backend
+              try {
+                const res = await api('/api/users/me/avatar', {
+                  method: 'POST',
+                  body: { image_data: dataUrl }
+                });
+                if (currentUser.value) currentUser.value.avatar_url = res.avatar_url;
+                profileForm.value.avatar_url = res.avatar_url;
+                profileToast.value = "Ảnh đại diện đã được lưu thành công!";
+                setTimeout(() => { profileToast.value = ''; }, 4000);
+              } catch (err) {
+                alert("Lỗi khi lưu ảnh: " + err.message);
+              }
             };
             img.src = event.target.result;
           };
