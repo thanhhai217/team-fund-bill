@@ -357,10 +357,13 @@ async def check_email(data: EmailCheckReq, conn: sqlite3.Connection = Depends(ge
     default_name = email.split("@")[0].replace(".", " ").title()
 
     with conn:
+        # User đầu tiên được đăng ký sẽ mặc định là admin
+        user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        role = "admin" if user_count == 0 else "user"
         conn.execute("""
             INSERT INTO users (email, pin_hash, display_name, role, status, must_change_pin, created_at, updated_at)
-            VALUES (?, ?, ?, 'user', 'active', 1, ?, ?)
-        """, (email, pin_h, default_name, now_str, now_str))
+            VALUES (?, ?, ?, ?, 'active', 1, ?, ?)
+        """, (email, pin_h, default_name, role, now_str, now_str))
 
     # Gửi Telegram cho Admin (Thanh Hải)
     time_vn = datetime.now(timezone(timedelta(hours=7))).strftime("%H:%M:%S %d/%m/%Y")
