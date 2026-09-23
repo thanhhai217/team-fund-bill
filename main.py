@@ -148,6 +148,35 @@ def hash_code(code: str) -> str:
 
 # ----------------- n8n & Notifications Dispatcher -----------------
 
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "355037509")
+
+# Auto-load telegram config from local .env if present
+_env_path = os.path.join(os.path.dirname(__file__), ".env")
+if os.path.exists(_env_path):
+    for _line in open(_env_path):
+        _line = _line.strip()
+        if _line.startswith("TELEGRAM_BOT_TOKEN="):
+            TELEGRAM_BOT_TOKEN = _line.split("=", 1)[1].strip("'\"")
+        elif _line.startswith("TELEGRAM_CHAT_ID="):
+            TELEGRAM_CHAT_ID = _line.split("=", 1)[1].strip("'\"")
+
+async def send_telegram_admin(message: str):
+    """Send notification to Admin via Telegram Bot"""
+    if not (TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID):
+        print(f"[telegram-skip] Missing bot token or chat ID. Msg: {message}")
+        return
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        async with httpx.AsyncClient(timeout=6.0) as client:
+            await client.post(url, json={
+                "chat_id": TELEGRAM_CHAT_ID,
+                "text": message,
+                "parse_mode": "HTML"
+            })
+    except Exception as e:
+        print(f"[telegram-error] {e}")
+
 async def dispatch_event(event_type: str, payload: dict):
     """Fire and forget event to n8n webhook without blocking request"""
     if not N8N_WEBHOOK_URL:
@@ -253,17 +282,72 @@ class ContributionReq(BaseModel):
 class PaymentConfirmReq(BaseModel):
     user_id: int
 
+class ChangePinReq(BaseModel):
+    new_pin: str = Field(min_length=4, max_length=4)
+    old_pin: Optional[str] = None
+
 # ----------------- Auth API -----------------
 
 @app.post("/api/auth/check-email")
-def check_email(data: EmailCheckReq, conn: sqlite3.Connection = Depends(get_db)):
+async def check_email(data: EmailCheckReq, conn: sqlite3.Connection = Depends(get_db)):
     email = data.email.strip().lower()
+    if "@" not in email:
+        raise HTTPException(status_code=400, detail="Vui lòng nhập địa chỉ email hợp lệ.")
+
     row = conn.execute("SELECT id, display_name FROM users WHERE email = ?", (email,)).fetchone()
+    if row:
+        return {
+            "exists": True,
+            "email": email,
+            "display_name": row["display_name"],
+            "message": "Email đã đăng ký. Vui lòng nhập mã PIN 4 số."
+        }
+
+    # Email chưa đăng ký: Tự động sinh mã PIN tạm 4 số và tạo tài khoản
+    temp_pin = f"{secrets.randbelow(9000) + 1000}"
+    pin_h = hash_pin(temp_pin)
+    now_str = now_iso()
+    default_name = email.split("@")[0].replace(".", " ").title()
+
+    with conn:
+        conn.execute("""
+            INSERT INTO users (email, pin_hash, display_name, status, created_at, updated_at)
+            VALUES (?, ?, ?, 'ACTIVE', ?, ?)
+        """, (email, pin_h, default_name, now_str, now_str))
+
+    # Gửi Telegram cho Admin (Thanh Hải)
+    time_vn = datetime.now(timezone(timedelta(hours=7))).strftime("%H:%M:%S %d/%m/%Y")
+    tele_msg = (
+        f"🔔 <b>[Team Fund & Bill] Cấp mã PIN tạm thời</b>\n\n"
+        f"👤 <b>Email:</b> <code>{email}</code>\n"
+        f"🔑 <b>Mã PIN tạm:</b> <code>{temp_pin}</code>\n"
+        f"⏰ <b>Thời gian:</b> {time_vn}\n\n"
+        f"👉 <i>Gửi mã PIN này cho thành viên để đăng nhập lần đầu. Thành viên có thể tự đổi PIN sau khi đăng nhập.</i>"
+    )
+    asyncio.create_task(send_telegram_admin(tele_msg))
+
     return {
-        "exists": row is not None,
+        "exists": False,
         "email": email,
-        "display_name": row["display_name"] if row else None
+        "message": "Email chưa được đăng ký trong hệ thống. Đã gửi mã PIN tạm thời đến Admin qua Telegram. Hãy liên hệ admin để lấy mã PIN tạm."
     }
+
+@app.post("/api/auth/change-pin")
+def change_pin(data: ChangePinReq, user: dict = Depends(get_current_user), conn: sqlite3.Connection = Depends(get_db)):
+    if not (data.new_pin.isdigit() and len(data.new_pin) == 4):
+        raise HTTPException(status_code=400, detail="Mã PIN mới phải gồm đúng 4 chữ số.")
+
+    if data.old_pin:
+        if hash_pin(data.old_pin.strip()) != user["pin_hash"]:
+            raise HTTPException(status_code=400, detail="Mã PIN hiện tại không chính xác.")
+
+    new_pin_h = hash_pin(data.new_pin.strip())
+    now_str = now_iso()
+
+    with conn:
+        conn.execute("UPDATE users SET pin_hash = ?, updated_at = ? WHERE id = ?", (new_pin_h, now_str, user["id"]))
+
+    return {"message": "Đổi mã PIN thành công"}
 
 @app.post("/api/auth/request-otp")
 async def request_otp(data: RequestOtpReq, conn: sqlite3.Connection = Depends(get_db)):

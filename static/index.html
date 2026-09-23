@@ -139,72 +139,41 @@
             </button>
           </form>
 
-          <!-- Step 2A: Login with PIN -->
-          <form v-if="authStep === 'login'" @submit.prevent="handleLogin" class="space-y-4">
+          <!-- Step 2: Login with PIN (Existing or Temporary) -->
+          <form v-if="authStep === 'pin'" @submit.prevent="handleLogin" class="space-y-4">
             <div class="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 flex items-center justify-between">
               <div>
-                <p class="text-[11px] text-slate-500">Đăng nhập tài khoản</p>
+                <p class="text-[11px] text-slate-500">{{ isNewUser ? 'Tài khoản mới (chưa đăng ký)' : 'Đăng nhập tài khoản' }}</p>
                 <p class="text-xs sm:text-sm font-bold text-indigo-900 truncate max-w-[200px]">{{ authEmail }}</p>
               </div>
-              <button type="button" @click="authStep = 'email'" class="text-xs text-indigo-600 font-semibold hover:underline">Đổi email</button>
+              <button type="button" @click="authStep = 'email'; authPin = ''" class="text-xs text-indigo-600 font-semibold hover:underline">Đổi email</button>
+            </div>
+
+            <!-- Notice when not registered -->
+            <div v-if="isNewUser" class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs space-y-1">
+              <p class="font-bold flex items-center space-x-1">
+                <span>⚠️</span>
+                <span>Email chưa được đăng ký trong hệ thống</span>
+              </p>
+              <p class="text-[11px] text-amber-800 leading-snug">
+                Hệ thống đã tự động gửi <b>mã PIN tạm 4 số</b> đến Admin qua Telegram. Hãy liên hệ Admin để lấy mã PIN tạm và nhập vào bên dưới để đăng nhập:
+              </p>
             </div>
 
             <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Mã PIN (4 chữ số)</label>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                {{ isNewUser ? 'Nhập mã PIN tạm thời (4 số)' : 'Mã PIN (4 chữ số)' }}
+              </label>
               <input v-model="authPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="••••"
                 class="w-full px-4 py-3 text-center text-3xl tracking-[0.5em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-slate-800 transition" />
+              <p v-if="isNewUser" class="text-[11px] text-slate-500 mt-1">
+                Sau khi đăng nhập, bạn có thể tự đổi sang mã PIN cá nhân trong trang Cá nhân.
+              </p>
             </div>
 
-            <button :disabled="authLoading" type="submit"
+            <button :disabled="authLoading || !authPin || authPin.length !== 4" type="submit"
               class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition active:scale-[0.98] disabled:opacity-50 text-sm">
-              {{ authLoading ? 'Đang đăng nhập...' : 'Đăng nhập' }}
-            </button>
-
-            <div class="text-center pt-2">
-              <button type="button" @click="startResetPin" class="text-xs text-slate-500 hover:text-indigo-600 font-medium transition">
-                Quên mã PIN? Khôi phục qua Email OTP
-              </button>
-            </div>
-          </form>
-
-          <!-- Step 2B: Register or Reset PIN with OTP -->
-          <form v-if="authStep === 'otp_pin'" @submit.prevent="handleOtpAndSetPin" class="space-y-4">
-            <div class="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-[11px] text-slate-500">{{ authPurpose === 'REGISTER' ? 'Đăng ký thành viên mới' : 'Đặt lại mã PIN' }}</p>
-                  <p class="text-xs sm:text-sm font-bold text-indigo-900 truncate max-w-[200px]">{{ authEmail }}</p>
-                </div>
-                <button type="button" @click="authStep = 'email'" class="text-xs text-indigo-600 font-semibold hover:underline">Đổi</button>
-              </div>
-              <div v-if="devOtpCode" class="mt-2 text-xs bg-emerald-100/80 text-emerald-800 p-2 rounded-lg font-mono">
-                ⚡ Mã OTP: <b class="text-sm">{{ devOtpCode }}</b>
-                <button type="button" @click="authOtp = devOtpCode" class="ml-2 underline text-emerald-900 font-bold">Điền nhanh</button>
-              </div>
-            </div>
-
-            <div v-if="authPurpose === 'REGISTER'">
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Tên hiển thị của bạn</label>
-              <input v-model="authDisplayName" type="text" required placeholder="Hải Thành, Minh Nguyễn..."
-                class="w-full px-4 py-2.5 text-base rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-slate-800 font-medium transition" />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Mã OTP từ Email</label>
-              <input v-model="authOtp" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" required placeholder="123456"
-                class="w-full px-4 py-2.5 text-center text-2xl tracking-[0.3em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-slate-800 transition" />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Tạo mã PIN 4 số</label>
-              <input v-model="authPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required placeholder="••••"
-                class="w-full px-4 py-2.5 text-center text-3xl tracking-[0.5em] font-mono rounded-xl border border-slate-200 focus:border-indigo-500 outline-none text-slate-800 transition" />
-              <p class="text-[11px] text-slate-400 mt-1">Dùng để đăng nhập nhanh sau này.</p>
-            </div>
-
-            <button :disabled="authLoading" type="submit"
-              class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition active:scale-[0.98] disabled:opacity-50 text-sm">
-              {{ authLoading ? 'Đang xử lý...' : (authPurpose === 'REGISTER' ? 'Hoàn tất & Bắt đầu' : 'Cập nhật PIN mới') }}
+              {{ authLoading ? 'Đang xác thực...' : (isNewUser ? 'Đăng nhập bằng PIN tạm' : 'Đăng nhập') }}
             </button>
           </form>
 
@@ -789,9 +758,26 @@
                   alt="VietQR" class="mx-auto max-w-[160px] rounded-xl shadow-sm border border-slate-200" />
               </div>
 
+              <!-- Change PIN Section -->
+              <div class="border-t border-slate-100 pt-3">
+                <h4 class="font-bold text-slate-800 text-xs mb-1.5">Đổi mã PIN đăng nhập</h4>
+                <p class="text-[11px] text-slate-400 mb-2">Thiết lập mã PIN cá nhân 4 số để đăng nhập nhanh:</p>
+                <div class="flex items-center space-x-2">
+                  <input v-model="changePinVal" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="••••"
+                    class="flex-1 px-3 py-2 text-center text-xl tracking-[0.4em] font-mono rounded-xl border border-slate-200 outline-none focus:border-indigo-500" />
+                  <button type="button" @click="handleChangePin" :disabled="changePinLoading || !changePinVal || changePinVal.length !== 4"
+                    class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition disabled:opacity-50 active:scale-95 shrink-0">
+                    {{ changePinLoading ? 'Đang đổi...' : 'Đổi PIN' }}
+                  </button>
+                </div>
+                <p v-if="changePinMsg" :class="['text-xs mt-1.5 font-bold', changePinMsg.includes('thành công') ? 'text-emerald-600' : 'text-rose-600']">
+                  {{ changePinMsg }}
+                </p>
+              </div>
+
               <button :disabled="profileLoading" type="submit"
                 class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition disabled:opacity-50 text-xs sm:text-sm active:scale-98">
-                {{ profileLoading ? 'Đang lưu...' : 'Lưu thay đổi' }}
+                {{ profileLoading ? 'Đang lưu...' : 'Lưu thông tin ngân hàng & tên' }}
               </button>
             </form>
           </div>
@@ -1084,12 +1070,12 @@
         const authStep = ref('email');
         const authEmail = ref('');
         const authPin = ref('');
-        const authOtp = ref('');
-        const authDisplayName = ref('');
-        const authPurpose = ref('REGISTER');
-        const devOtpCode = ref('');
+        const isNewUser = ref(false);
         const authLoading = ref(false);
         const authError = ref('');
+        const changePinVal = ref('');
+        const changePinLoading = ref(false);
+        const changePinMsg = ref('');
 
         const dashboardData = ref({
           fund_balance: 0,
@@ -1265,17 +1251,9 @@
               method: 'POST',
               body: { email: authEmail.value }
             });
-            if (res.exists) {
-              authStep.value = 'login';
-            } else {
-              authPurpose.value = 'REGISTER';
-              const otpRes = await api('/api/auth/request-otp', {
-                method: 'POST',
-                body: { email: authEmail.value, purpose: 'REGISTER' }
-              });
-              devOtpCode.value = otpRes.dev_code || '';
-              authStep.value = 'otp_pin';
-            }
+            isNewUser.value = !res.exists;
+            authStep.value = 'pin';
+            authPin.value = '';
           } catch (err) {
             authError.value = err.message;
           } finally {
@@ -1301,45 +1279,24 @@
           }
         };
 
-        const startResetPin = async () => {
-          authLoading.value = true;
-          authError.value = '';
-          try {
-            authPurpose.value = 'RESET_PIN';
-            const res = await api('/api/auth/request-otp', {
-              method: 'POST',
-              body: { email: authEmail.value, purpose: 'RESET_PIN' }
-            });
-            devOtpCode.value = res.dev_code || '';
-            authStep.value = 'otp_pin';
-          } catch (err) {
-            authError.value = err.message;
-          } finally {
-            authLoading.value = false;
+        const handleChangePin = async () => {
+          if (!changePinVal.value || changePinVal.value.length !== 4) {
+            changePinMsg.value = "Mã PIN phải gồm đúng 4 chữ số";
+            return;
           }
-        };
-
-        const handleOtpAndSetPin = async () => {
-          authLoading.value = true;
-          authError.value = '';
+          changePinLoading.value = true;
+          changePinMsg.value = '';
           try {
-            const res = await api('/api/auth/register-or-reset', {
+            await api('/api/auth/change-pin', {
               method: 'POST',
-              body: {
-                email: authEmail.value,
-                code: authOtp.value,
-                purpose: authPurpose.value,
-                pin: authPin.value,
-                display_name: authDisplayName.value || authEmail.value.split('@')[0]
-              }
+              body: { new_pin: changePinVal.value }
             });
-            currentUser.value = res.user;
-            profileForm.value = { ...res.user };
-            await loadAllData();
+            changePinMsg.value = "✓ Đã đổi mã PIN thành công!";
+            changePinVal.value = '';
           } catch (err) {
-            authError.value = err.message;
+            changePinMsg.value = err.message;
           } finally {
-            authLoading.value = false;
+            changePinLoading.value = false;
           }
         };
 
@@ -1615,15 +1572,6 @@
           debtSubTab,
           tabs,
           categories,
-          authStep,
-          authEmail,
-          authPin,
-          authOtp,
-          authDisplayName,
-          authPurpose,
-          devOtpCode,
-          authLoading,
-          authError,
           dashboardData,
           bills,
           billsLoading,
@@ -1661,10 +1609,18 @@
           selectAllParticipants,
           setSplitMode,
           recalcSplit,
+          authStep,
+          authEmail,
+          authPin,
+          authLoading,
+          authError,
+          isNewUser,
           handleEmailSubmit,
           handleLogin,
-          startResetPin,
-          handleOtpAndSetPin,
+          changePinVal,
+          changePinLoading,
+          changePinMsg,
+          handleChangePin,
           logout,
           loadBills,
           openCreateBillModal,
